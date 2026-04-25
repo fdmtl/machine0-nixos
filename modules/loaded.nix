@@ -1,0 +1,169 @@
+# machine0 loaded module — layers dev tools on top of base.nix.
+#
+# This file is baked into the image as /etc/nixos/loaded.nix and imported
+# by /etc/nixos/configuration.nix so that first-boot `nixos-rebuild switch`
+# (e.g. from `machine0 provision`) re-applies it and produces the same
+# toplevel that was built into the image.
+{
+  pkgs,
+  lib,
+  nixpkgsUnstable ? null,
+  ...
+}:
+
+{
+  machine0.profile.loaded = true;
+
+  # Pull AI agents from unstable so we get fresh upstream releases without
+  # waiting for the 25.11 channel.
+  nixpkgs.overlays = lib.optionals (nixpkgsUnstable != null) [
+    (final: prev:
+      let
+        unstable = import nixpkgsUnstable {
+          inherit (prev.stdenv.hostPlatform) system;
+          config.allowUnfree = true;
+        };
+      in
+      {
+        inherit (unstable) claude-code codex;
+      })
+  ];
+  nixpkgs.config.allowUnfree = true;
+
+  # Base image creates the `nix` user with wheel + passwordless sudo and bash.
+  # Loaded layer: add docker group, flip shell to zsh. mkForce because base
+  # sets shell at the same priority.
+  users.users.nix = {
+    shell = lib.mkForce pkgs.zsh;
+    extraGroups = [ "docker" ];
+  };
+
+  environment.systemPackages = with pkgs; [
+    # Build tools
+    gcc
+    gnumake
+    cmake
+    pkg-config
+
+    # CLI essentials
+    git
+    vim
+    curl
+    wget
+    unzip
+    jq
+    p7zip
+    inetutils
+    htop
+    btop
+    fzf
+    ripgrep
+
+    # Runtimes
+    bun
+    python3
+    uv
+    pipx
+    rustc
+    cargo
+    go
+
+    # Shell tools
+    eza
+    zoxide
+    starship
+    screen
+    chafa
+
+    # AI agents
+    claude-code
+    codex
+  ];
+
+  programs.zsh = {
+    enable = true;
+    autosuggestions.enable = true;
+    syntaxHighlighting.enable = true;
+  };
+
+  # Point npm's global prefix at the user's home so `npm install -g` works
+  # without trying to write into the read-only nodejs store path. The
+  # default npmrc shipped by this module already sets prefix = ${HOME}/.npm.
+  programs.npm = {
+    enable = true;
+    package = pkgs.nodejs_22;
+  };
+
+  environment.sessionVariables = {
+    PATH = [ "$HOME/.npm/bin" ];
+  };
+
+  virtualisation.docker.enable = true;
+
+  # SSH hardening lives in base.nix.
+  networking.firewall = {
+    enable = true;
+    allowedTCPPorts = [ 22 80 443 ];
+  };
+
+  services.fail2ban = {
+    enable = true;
+    jails.sshd.settings = {
+      enabled = true;
+      port = "ssh";
+      maxretry = 5;
+      findtime = 600;
+      bantime = 86400;
+    };
+  };
+
+  # Deploy shell configs to the nix user's home. Files are nix paths so
+  # they're baked into the store (edit-then-rebuild flow).
+  system.activationScripts.nixUserConfig = lib.stringAfter [ "users" ] ''
+    NIX_HOME="/home/nix"
+    if [ -d "$NIX_HOME" ]; then
+      install -m 0644 -o nix -g users ${../files/init.zsh} "$NIX_HOME/.zshrc"
+      install -d -m 0755 -o nix -g users "$NIX_HOME/.config/starship"
+      install -m 0644 -o nix -g users ${../files/starship.toml} \
+        "$NIX_HOME/.config/starship/starship.toml"
+      install -m 0644 -o nix -g users ${../files/screenrc} "$NIX_HOME/.screenrc"
+    fi
+  '';
+
+  # Override the base wrapper so rebuilds keep loading the dev profile.
+  environment.etc = {
+    "nixos/loaded.nix".source = ./loaded.nix;
+    "nixos/files".source = ../files;
+    "motd".text = ''
+
+        ┌─────────────────────────────────────┐
+        │                                     │
+        │   machine0 — NixOS 25.11            │
+        │                                     │
+        │   Docs: https://machine0.io/docs    │
+        │                                     │
+        └─────────────────────────────────────┘
+
+    '';
+    "nixos/configuration.nix".text = ''
+      { ... }:
+      {
+        imports = [
+          /etc/nixos/base.nix
+          /etc/nixos/loaded.nix
+        ];
+        nixpkgs.overlays = [
+          (final: prev:
+            let
+              unstable = import (builtins.fetchTarball
+                "https://github.com/NixOS/nixpkgs/archive/${nixpkgsUnstable.rev}.tar.gz"
+              ) { inherit (prev.stdenv.hostPlatform) system; config.allowUnfree = true; };
+            in {
+              inherit (unstable) claude-code codex;
+            })
+        ];
+        nixpkgs.config.allowUnfree = true;
+      }
+    '';
+  };
+}

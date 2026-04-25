@@ -1,0 +1,20 @@
+add_newline = false
+command_timeout = 200
+format = "\\[ $username$hostname \\] $directory$character"
+
+[username]
+show_always = true
+format = "[$user@](green)"
+
+[hostname]
+ssh_only = false
+format = "[$hostname](green)"
+
+[character]
+error_symbol = "[\\$]()"
+success_symbol = "[\\$]()"
+
+[directory]
+truncation_length = 0
+truncate_to_repo = false
+format = "[$path](magenta) "
