@@ -36,8 +36,10 @@ Everything is a Nix flake. One evaluation produces an identical system whether y
 ### Provision a remote VM
 
 ```bash
+git clone https://github.com/fdmtl/machine0-nixos.git
+cd machine0-nixos
 machine0 new my-vm --image nixos-25-11 --size medium
-machine0 provision my-vm machine0-nixos/flake.nix#loaded
+machine0 provision my-vm ./flake.nix#loaded
 ```
 
 The CLI syncs the flake to the VM and runs `nixos-rebuild switch`.
