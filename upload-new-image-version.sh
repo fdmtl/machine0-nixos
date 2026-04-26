@@ -1,4 +1,40 @@
 #!/usr/bin/env bash
+#
+# upload-new-image-version.sh — build a NixOS image from this flake and
+# publish it as a new draft version of a machine0 image.
+#
+# What it does:
+#   1. Builds the qcow2.gz for <profile> via ./make-image.sh.
+#   2. Copies the qcow2.gz into <publicPath> (a directory served at
+#      http://<publicIp>/), making it fetchable by the machine0 backend.
+#   3. Tells machine0 to ingest that URL as a new draft version of
+#      <imageName>, tagged with metadata {repo, sha, branch, nixProfile}
+#      from the local git checkout.
+#
+#   Drafts of the target image are deleted first (active versions are
+#   never touched). If the latest existing version already matches the
+#   current sha/branch/nixProfile, the script warns and exits without
+#   rebuilding.
+#
+#   The newly-uploaded version starts as a DRAFT. Promote it once
+#   you've smoke-tested it:
+#     machine0 images versions promote <imageName> <version>
+#
+# Examples:
+#   # base profile → nixos-25-11-next
+#   ./upload-new-image-version.sh \
+#     --profile base \
+#     --imageName nixos-25-11-next \
+#     --publicPath ~/docker-webserver/public/ \
+#     --publicIp $(curl -fsS https://api.ipify.org)
+#
+#   # loaded profile → nixos-25-11-loaded-next
+#   ./upload-new-image-version.sh \
+#     --profile loaded \
+#     --imageName nixos-25-11-loaded-next \
+#     --publicPath ~/docker-webserver/public/ \
+#     --publicIp $(curl -fsS https://api.ipify.org)
+
 set -euo pipefail
 
 if [ ! -f /etc/NIXOS ]; then
