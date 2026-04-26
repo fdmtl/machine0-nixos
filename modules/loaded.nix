@@ -31,11 +31,10 @@
   nixpkgs.config.allowUnfree = true;
 
   # Base image creates the `nix` user with wheel + passwordless sudo and bash.
-  # Loaded layer: add docker group, flip shell to zsh. mkForce because base
-  # sets shell at the same priority.
+  # Loaded layer: flip shell to zsh. mkForce because base sets shell at the
+  # same priority. Docker runs rootless under this user — no docker group.
   users.users.nix = {
     shell = lib.mkForce pkgs.zsh;
-    extraGroups = [ "docker" ];
   };
 
   environment.systemPackages = with pkgs; [
@@ -98,23 +97,18 @@
     PATH = [ "$HOME/.npm/bin" ];
   };
 
-  virtualisation.docker.enable = true;
+  # Rootless Docker — daemon runs as the `nix` user, not root.
+  # `setSocketVariable = true` exports DOCKER_HOST so the docker CLI talks to
+  # the per-user socket without needing sudo or docker-group membership.
+  virtualisation.docker.rootless = {
+    enable = true;
+    setSocketVariable = true;
+  };
 
-  # SSH hardening lives in base.nix.
+  # SSH hardening + fail2ban live in base.nix.
   networking.firewall = {
     enable = true;
     allowedTCPPorts = [ 22 80 443 ];
-  };
-
-  services.fail2ban = {
-    enable = true;
-    jails.sshd.settings = {
-      enabled = true;
-      port = "ssh";
-      maxretry = 5;
-      findtime = 600;
-      bantime = 86400;
-    };
   };
 
   # Deploy shell configs to the nix user's home. Files are nix paths so

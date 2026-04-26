@@ -68,6 +68,35 @@ in
         PasswordAuthentication = lib.mkForce false;
         KbdInteractiveAuthentication = lib.mkForce false;
         X11Forwarding = lib.mkForce false;
+
+        # Pin modern crypto only — no weak ciphers/KEX/MACs.
+        Ciphers = [
+          "chacha20-poly1305@openssh.com"
+          "aes256-gcm@openssh.com"
+          "aes128-gcm@openssh.com"
+        ];
+        KexAlgorithms = [
+          "curve25519-sha256"
+          "curve25519-sha256@libssh.org"
+        ];
+        Macs = [
+          "hmac-sha2-512-etm@openssh.com"
+          "hmac-sha2-256-etm@openssh.com"
+        ];
+        PubkeyAcceptedAlgorithms = "ssh-ed25519,rsa-sha2-512,rsa-sha2-256";
+
+        # Online brute-force / DoS bounds.
+        MaxAuthTries = 3;
+        LoginGraceTime = 20;
+        MaxStartups = "10:30:60";
+
+        # Forwarding off — this is a workload VM, not a jump host.
+        AllowAgentForwarding = "no";
+        AllowTcpForwarding = "no";
+        GatewayPorts = "no";
+
+        # Only the provisioned user may log in.
+        AllowUsers = [ "nix" ];
       };
     };
 
@@ -199,5 +228,46 @@ in
     networking.hostName = lib.mkDefault "";
 
     networking.firewall.allowedTCPPorts = [ 22 ];
+
+    # ── Brute-force protection ────────────────────────────────────────────
+    # Lives in base so #base images aren't deployed without it.
+    services.fail2ban = {
+      enable = true;
+      maxretry = 3;
+      bantime = "24h";
+      bantime-increment = {
+        enable = true;
+        maxtime = "168h";
+        factor = "4";
+      };
+      jails.sshd.settings = {
+        enabled = true;
+        port = "ssh";
+        findtime = 300;
+      };
+    };
+
+    # ── Automatic security updates ────────────────────────────────────────
+    # Tracks the upstream flake; the lock file in that flake pins inputs.
+    system.autoUpgrade = {
+      enable = true;
+      flake = "github:fdmtl/machine0-nixos";
+      flags = [ "--refresh" "--no-write-lock-file" ];
+      dates = "04:00";
+      randomizedDelaySec = "45min";
+      allowReboot = true;
+      rebootWindow = {
+        lower = "04:00";
+        upper = "06:00";
+      };
+    };
+
+    # Keep the store from filling the disk over many auto-upgrades.
+    nix.gc = {
+      automatic = true;
+      dates = "weekly";
+      options = "--delete-older-than 14d";
+    };
+    nix.optimise.automatic = true;
   };
 }
