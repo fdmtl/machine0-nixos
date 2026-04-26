@@ -249,9 +249,10 @@ in
 
     # ── Automatic security updates ────────────────────────────────────────
     # Tracks the upstream flake; the lock file in that flake pins inputs.
+    # mkDefault so forks / private deployments can override the source.
     system.autoUpgrade = {
       enable = true;
-      flake = "github:fdmtl/machine0-nixos";
+      flake = lib.mkDefault "github:fdmtl/machine0-nixos";
       flags = [ "--refresh" "--no-write-lock-file" ];
       dates = "04:00";
       randomizedDelaySec = "45min";

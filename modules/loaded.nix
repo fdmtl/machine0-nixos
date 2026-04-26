@@ -123,10 +123,11 @@
     if [ -d "$NIX_HOME" ]; then
       # `install -d` only applies -o/-g/-m to directories it creates and
       # only to the leaf, so .config got root-owned on fresh boots. Create
-      # it explicitly and self-heal ownership on existing systems.
+      # the tree, then chown -R to self-heal any wrong ownership inherited
+      # from older activations (including subdirs created by other tools).
       install -d -m 0755 -o nix -g users "$NIX_HOME/.config"
-      chown nix:users "$NIX_HOME/.config"
       install -d -m 0755 -o nix -g users "$NIX_HOME/.config/starship"
+      chown -R nix:users "$NIX_HOME/.config"
       install -m 0644 -o nix -g users ${../files/init.zsh} "$NIX_HOME/.zshrc"
       install -m 0644 -o nix -g users ${../files/starship.toml} \
         "$NIX_HOME/.config/starship/starship.toml"
