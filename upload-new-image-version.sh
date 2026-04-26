@@ -40,7 +40,7 @@ done
 [ -n "$PROFILE" ] && [ -n "$IMAGE_NAME" ] && [ -n "$PUBLIC_PATH" ] && [ -n "$PUBLIC_IP" ] && [ -n "$REGION" ] || usage
 
 PUBLIC_PATH="${PUBLIC_PATH/#\~/$HOME}"
-PUBLIC_PATH="${PUBLIC_PATH%/}"
+PUBLIC_PATH="$(realpath -m "$PUBLIC_PATH")"
 
 cd "$(dirname "$0")"
 
@@ -80,27 +80,7 @@ if [ "$EXISTS" -gt 0 ]; then
     echo "Warning: latest version of ${IMAGE_NAME} already matches current sha/branch/nixProfile — no update needed" >&2
     exit 0
   fi
-fi
 
-echo ">> Building image for profile: $PROFILE"
-IMAGE_PATH=$(./make-image.sh "$PROFILE")
-echo ">> Built: $IMAGE_PATH"
-
-FILENAME="${IMAGE_NAME}.qcow2.gz"
-DEST="${PUBLIC_PATH}/${FILENAME}"
-URL="http://${PUBLIC_IP}/${FILENAME}"
-
-echo ">> Copying to ${DEST}"
-cp -f "$IMAGE_PATH" "$DEST"
-chmod 644 "$DEST"
-
-echo ">> Verifying ${URL}"
-if ! curl -fsSI -o /dev/null "$URL"; then
-  echo "Error: uploaded image is not reachable at $URL" >&2
-  exit 1
-fi
-
-if [ "$EXISTS" -gt 0 ]; then
   echo ">> Waiting for image ${IMAGE_NAME} to reach READY state before mutating"
   for i in $(seq 1 120); do
     STATUS=$(machine0 images get "$IMAGE_NAME" --json | jq -r '.image.status')
@@ -122,6 +102,24 @@ if [ "$EXISTS" -gt 0 ]; then
   done
 else
   echo ">> Image ${IMAGE_NAME} does not exist yet — will be created"
+fi
+
+echo ">> Building image for profile: $PROFILE"
+IMAGE_PATH=$(./make-image.sh "$PROFILE")
+echo ">> Built: $IMAGE_PATH"
+
+FILENAME="${IMAGE_NAME}.qcow2.gz"
+DEST="${PUBLIC_PATH}/${FILENAME}"
+URL="http://${PUBLIC_IP}/${FILENAME}"
+
+echo ">> Copying to ${DEST}"
+cp -f "$IMAGE_PATH" "$DEST"
+chmod 644 "$DEST"
+
+echo ">> Verifying ${URL}"
+if ! curl -fsSI -o /dev/null "$URL"; then
+  echo "Error: uploaded image is not reachable at $URL" >&2
+  exit 1
 fi
 
 echo ">> Uploading ${URL} as ${IMAGE_NAME} (region: ${REGION})"
