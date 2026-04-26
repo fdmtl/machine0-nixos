@@ -111,6 +111,10 @@
     allowedTCPPorts = [ 22 80 443 ];
   };
 
+  # Let rootless Docker (and any other unprivileged process) bind 80/443
+  # directly. Without this, rootlesskit refuses with EACCES on ports < 1024.
+  boot.kernel.sysctl."net.ipv4.ip_unprivileged_port_start" = 80;
+
   # Deploy shell configs to the nix user's home. Files are nix paths so
   # they're baked into the store (edit-then-rebuild flow).
   system.activationScripts.nixUserConfig = lib.stringAfter [ "users" ] ''
