@@ -46,6 +46,7 @@
 
     # CLI essentials
     git
+    gh
     vim
     curl
     wget
@@ -120,8 +121,13 @@
   system.activationScripts.nixUserConfig = lib.stringAfter [ "users" ] ''
     NIX_HOME="/home/nix"
     if [ -d "$NIX_HOME" ]; then
-      install -m 0644 -o nix -g users ${../files/init.zsh} "$NIX_HOME/.zshrc"
+      # `install -d` only applies -o/-g/-m to directories it creates and
+      # only to the leaf, so .config got root-owned on fresh boots. Create
+      # it explicitly and self-heal ownership on existing systems.
+      install -d -m 0755 -o nix -g users "$NIX_HOME/.config"
+      chown nix:users "$NIX_HOME/.config"
       install -d -m 0755 -o nix -g users "$NIX_HOME/.config/starship"
+      install -m 0644 -o nix -g users ${../files/init.zsh} "$NIX_HOME/.zshrc"
       install -m 0644 -o nix -g users ${../files/starship.toml} \
         "$NIX_HOME/.config/starship/starship.toml"
       install -m 0644 -o nix -g users ${../files/screenrc} "$NIX_HOME/.screenrc"
