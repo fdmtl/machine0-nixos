@@ -44,10 +44,9 @@ fi
 
 usage() {
   cat >&2 <<EOF
-Usage: $0 --profile <profile> --imageName <image_name> --publicPath <public_path> --publicIp <public_ip> [--region <region>] [--username <user>]
+Usage: $0 --profile <profile> --imageName <image_name> --publicPath <public_path> --publicIp <public_ip> [--region <region>]
 
   --region defaults to eu (valid: us, uk, eu, asia)
-  --username defaults to nix (the SSH user baked into machine0 NixOS images)
 
 Example:
   $0 --profile base --imageName nixos-25-11-next \\
@@ -62,7 +61,6 @@ IMAGE_NAME=""
 PUBLIC_PATH=""
 PUBLIC_IP=""
 REGION="eu"
-USERNAME="nix"
 while [ $# -gt 0 ]; do
   case "$1" in
     --profile)     PROFILE="${2:-}";     shift 2 ;;
@@ -70,13 +68,12 @@ while [ $# -gt 0 ]; do
     --publicPath)  PUBLIC_PATH="${2:-}"; shift 2 ;;
     --publicIp)    PUBLIC_IP="${2:-}";   shift 2 ;;
     --region)      REGION="${2:-}";      shift 2 ;;
-    --username)    USERNAME="${2:-}";    shift 2 ;;
     -h|--help)     usage ;;
     *)             usage ;;
   esac
 done
 
-[ -n "$PROFILE" ] && [ -n "$IMAGE_NAME" ] && [ -n "$PUBLIC_PATH" ] && [ -n "$PUBLIC_IP" ] && [ -n "$REGION" ] && [ -n "$USERNAME" ] || usage
+[ -n "$PROFILE" ] && [ -n "$IMAGE_NAME" ] && [ -n "$PUBLIC_PATH" ] && [ -n "$PUBLIC_IP" ] && [ -n "$REGION" ] || usage
 
 PUBLIC_PATH="${PUBLIC_PATH/#\~/$HOME}"
 PUBLIC_PATH="$(realpath -m "$PUBLIC_PATH")"
@@ -167,7 +164,7 @@ machine0 images upload "$URL" \
   --name "$IMAGE_NAME" \
   --region "$REGION" \
   --distribution nixos \
-  --default-ssh-username "$USERNAME" \
+  --default-ssh-username nix \
   --metadata "$METADATA" \
   --force-system-version
 
