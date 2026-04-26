@@ -164,6 +164,7 @@ machine0 images upload "$URL" \
   --name "$IMAGE_NAME" \
   --region "$REGION" \
   --distribution nixos \
+  --default-ssh-username nix \
   --metadata "$METADATA" \
   --force-system-version
 
