@@ -139,6 +139,9 @@
         └─────────────────────────────────────┘
 
     '';
+    # Hash-pinned at image build time from the flake input's narHash, so a
+    # runtime `nixos-rebuild` reading this file cannot be tricked into
+    # evaluating a substituted nixpkgs-unstable tree.
     "nixos/configuration.nix".text = ''
       { ... }:
       {
@@ -149,9 +152,10 @@
         nixpkgs.overlays = [
           (final: prev:
             let
-              unstable = import (builtins.fetchTarball
-                "https://github.com/NixOS/nixpkgs/archive/${nixpkgsUnstable.rev}.tar.gz"
-              ) { inherit (prev.stdenv.hostPlatform) system; config.allowUnfree = true; };
+              unstable = import (builtins.fetchTarball {
+                url = "https://github.com/NixOS/nixpkgs/archive/${nixpkgsUnstable.rev}.tar.gz";
+                sha256 = "${nixpkgsUnstable.narHash}";
+              }) { inherit (prev.stdenv.hostPlatform) system; config.allowUnfree = true; };
             in {
               inherit (unstable) claude-code codex;
             })
