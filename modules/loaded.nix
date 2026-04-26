@@ -31,11 +31,10 @@
   nixpkgs.config.allowUnfree = true;
 
   # Base image creates the `nix` user with wheel + passwordless sudo and bash.
-  # Loaded layer: add docker group, flip shell to zsh. mkForce because base
-  # sets shell at the same priority.
+  # Loaded layer: flip shell to zsh. mkForce because base sets shell at the
+  # same priority. Docker runs rootless under this user — no docker group.
   users.users.nix = {
     shell = lib.mkForce pkgs.zsh;
-    extraGroups = [ "docker" ];
   };
 
   environment.systemPackages = with pkgs; [
@@ -47,6 +46,7 @@
 
     # CLI essentials
     git
+    gh
     vim
     curl
     wget
@@ -98,32 +98,37 @@
     PATH = [ "$HOME/.npm/bin" ];
   };
 
-  virtualisation.docker.enable = true;
+  # Rootless Docker — daemon runs as the `nix` user, not root.
+  # `setSocketVariable = true` exports DOCKER_HOST so the docker CLI talks to
+  # the per-user socket without needing sudo or docker-group membership.
+  virtualisation.docker.rootless = {
+    enable = true;
+    setSocketVariable = true;
+  };
 
-  # SSH hardening lives in base.nix.
+  # SSH hardening + fail2ban live in base.nix.
   networking.firewall = {
     enable = true;
     allowedTCPPorts = [ 22 80 443 ];
   };
 
-  services.fail2ban = {
-    enable = true;
-    jails.sshd.settings = {
-      enabled = true;
-      port = "ssh";
-      maxretry = 5;
-      findtime = 600;
-      bantime = 86400;
-    };
-  };
+  # Let rootless Docker (and any other unprivileged process) bind 80/443
+  # directly. Without this, rootlesskit refuses with EACCES on ports < 1024.
+  boot.kernel.sysctl."net.ipv4.ip_unprivileged_port_start" = 80;
 
   # Deploy shell configs to the nix user's home. Files are nix paths so
   # they're baked into the store (edit-then-rebuild flow).
   system.activationScripts.nixUserConfig = lib.stringAfter [ "users" ] ''
     NIX_HOME="/home/nix"
     if [ -d "$NIX_HOME" ]; then
-      install -m 0644 -o nix -g users ${../files/init.zsh} "$NIX_HOME/.zshrc"
+      # `install -d` only applies -o/-g/-m to directories it creates and
+      # only to the leaf, so .config got root-owned on fresh boots. Create
+      # the tree, then chown -R to self-heal any wrong ownership inherited
+      # from older activations (including subdirs created by other tools).
+      install -d -m 0755 -o nix -g users "$NIX_HOME/.config"
       install -d -m 0755 -o nix -g users "$NIX_HOME/.config/starship"
+      chown -R nix:users "$NIX_HOME/.config"
+      install -m 0644 -o nix -g users ${../files/init.zsh} "$NIX_HOME/.zshrc"
       install -m 0644 -o nix -g users ${../files/starship.toml} \
         "$NIX_HOME/.config/starship/starship.toml"
       install -m 0644 -o nix -g users ${../files/screenrc} "$NIX_HOME/.screenrc"
@@ -145,6 +150,9 @@
         └─────────────────────────────────────┘
 
     '';
+    # Hash-pinned at image build time from the flake input's narHash, so a
+    # runtime `nixos-rebuild` reading this file cannot be tricked into
+    # evaluating a substituted nixpkgs-unstable tree.
     "nixos/configuration.nix".text = ''
       { ... }:
       {
@@ -155,9 +163,10 @@
         nixpkgs.overlays = [
           (final: prev:
             let
-              unstable = import (builtins.fetchTarball
-                "https://github.com/NixOS/nixpkgs/archive/${nixpkgsUnstable.rev}.tar.gz"
-              ) { inherit (prev.stdenv.hostPlatform) system; config.allowUnfree = true; };
+              unstable = import (builtins.fetchTarball {
+                url = "https://github.com/NixOS/nixpkgs/archive/${nixpkgsUnstable.rev}.tar.gz";
+                sha256 = "${nixpkgsUnstable.narHash}";
+              }) { inherit (prev.stdenv.hostPlatform) system; config.allowUnfree = true; };
             in {
               inherit (unstable) claude-code codex;
             })
