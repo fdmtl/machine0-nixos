@@ -213,6 +213,11 @@ in
       jq
     ];
 
+    # Tag the toplevel "machine0" — kept in base (not image.nix) so that
+    # `nixos-rebuild switch` after image boot produces the same toplevel
+    # hash as the image build, making provision a no-op when nothing changed.
+    system.nixos.tags = [ "machine0" ];
+
     nix.settings = {
       experimental-features = [ "nix-command" "flakes" ];
       max-jobs = 1;

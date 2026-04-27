@@ -20,7 +20,6 @@
     in
     {
       image.extension = "${format}.gz";
-      system.nixos.tags = [ "machine0" ];
       system.build.machine0Image = import (modulesPath + "/../lib/make-disk-image.nix") {
         name = "machine0-image";
         inherit (config.image) baseName;
