@@ -144,10 +144,11 @@ in
       };
       unitConfig = {
         ConditionPathExists = "!${metadataFile}";
-        After =
-          [ "network-pre.target" ]
-          ++ lib.optional config.networking.dhcpcd.enable "dhcpcd.service"
-          ++ lib.optional config.systemd.network.enable "systemd-networkd.service";
+        After = [
+          "network-pre.target"
+        ]
+        ++ lib.optional config.networking.dhcpcd.enable "dhcpcd.service"
+        ++ lib.optional config.systemd.network.enable "systemd-networkd.service";
       };
     };
 
@@ -156,7 +157,10 @@ in
     systemd.services.machine0-set-hostname = {
       description = "Set hostname from user-data";
       wantedBy = [ "network.target" ];
-      path = [ pkgs.jq pkgs.inetutils ];
+      path = [
+        pkgs.jq
+        pkgs.inetutils
+      ];
       script = ''
         set -e
         HOSTNAME=$(jq -er '.user_data | capture("hostName *= *\"(?<h>[^\"]+)\"") | .h' ${metadataFile}) || exit 0
@@ -219,7 +223,10 @@ in
     system.nixos.tags = [ "machine0" ];
 
     nix.settings = {
-      experimental-features = [ "nix-command" "flakes" ];
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
       max-jobs = 1;
       cores = 1;
       substituters = [
@@ -231,7 +238,10 @@ in
         "machine0.cachix.org-1:l34M6e3/+rNZJqlpANywfgeOhBBW6r0eo0VSVIh0PIk="
       ];
     };
-    nix.nixPath = [ "nixos-config=/etc/nixos/configuration.nix" "nixpkgs=flake:nixpkgs" ];
+    nix.nixPath = [
+      "nixos-config=/etc/nixos/configuration.nix"
+      "nixpkgs=flake:nixpkgs"
+    ];
 
     systemd.services.nix-daemon.serviceConfig = {
       MemoryMax = "75%";
@@ -284,7 +294,10 @@ in
     system.autoUpgrade = {
       enable = true;
       flake = lib.mkDefault "github:fdmtl/machine0-nixos";
-      flags = [ "--refresh" "--no-write-lock-file" ];
+      flags = [
+        "--refresh"
+        "--no-write-lock-file"
+      ];
       dates = "04:00";
       randomizedDelaySec = "45min";
       allowReboot = true;

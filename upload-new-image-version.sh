@@ -118,7 +118,7 @@ if [ "$EXISTS" -gt 0 ]; then
   fi
 
   echo ">> Waiting for image ${IMAGE_NAME} to reach READY state before mutating"
-  for i in $(seq 1 120); do
+  for _ in $(seq 1 120); do
     STATUS=$(machine0 images get "$IMAGE_NAME" --json | jq -r '.image.status')
     case "$STATUS" in
       READY)    echo ">> Image is READY";                                 break ;;

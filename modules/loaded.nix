@@ -17,7 +17,8 @@
   # Pull AI agents from unstable so we get fresh upstream releases without
   # waiting for the 25.11 channel.
   nixpkgs.overlays = lib.optionals (nixpkgsUnstable != null) [
-    (final: prev:
+    (
+      _final: prev:
       let
         unstable = import nixpkgsUnstable {
           inherit (prev.stdenv.hostPlatform) system;
@@ -26,7 +27,8 @@
       in
       {
         inherit (unstable) claude-code codex;
-      })
+      }
+    )
   ];
   nixpkgs.config.allowUnfree = true;
 
@@ -109,7 +111,11 @@
   # SSH hardening + fail2ban live in base.nix.
   networking.firewall = {
     enable = true;
-    allowedTCPPorts = [ 22 80 443 ];
+    allowedTCPPorts = [
+      22
+      80
+      443
+    ];
   };
 
   # Let rootless Docker (and any other unprivileged process) bind 80/443
@@ -141,13 +147,13 @@
     "nixos/files".source = ../files;
     "motd".text = ''
 
-        ┌─────────────────────────────────────┐
-        │                                     │
-        │   machine0 — NixOS 25.11            │
-        │                                     │
-        │   Docs: https://machine0.io/docs    │
-        │                                     │
-        └─────────────────────────────────────┘
+      ┌─────────────────────────────────────┐
+      │                                     │
+      │   machine0 — NixOS 25.11            │
+      │                                     │
+      │   Docs: https://machine0.io/docs    │
+      │                                     │
+      └─────────────────────────────────────┘
 
     '';
     # Hash-pinned at image build time from the flake input's narHash, so a
