@@ -22,7 +22,7 @@ set -euo pipefail
 
 REGION="eu"
 SIZE="small"
-IMAGE_VERSION=5
+IMAGE_VERSION=6
 SSH_PROBE_TIMEOUT=900   # max seconds to wait for any VM to reach SSH-ready
 SSH_POLL_INTERVAL=3     # seconds between SSH probes
 
@@ -31,8 +31,8 @@ SSH_POLL_INTERVAL=3     # seconds between SSH probes
 #   image   : machine0 image slug
 #   profile : flake attribute (passed as ".#<profile>" to provision)
 TARGETS=(
-  "test-base-v5|nixos-25-11-next|base"
-  "test-loaded-v5|nixos-25-11-loaded-next|loaded"
+  "test-base-v6|nixos-25-11-next|base"
+  "test-loaded-v6|nixos-25-11-loaded-next|loaded"
 )
 
 LOG_DIR="/tmp/test-draft-images-logs"
