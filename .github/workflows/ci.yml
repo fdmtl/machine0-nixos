@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - name: nixfmt --check
+        run: nix run nixpkgs#nixfmt-rfc-style -- --check $(find . -name '*.nix' -not -path './.git/*')
+      - name: statix check
+        run: nix run nixpkgs#statix -- check .
+      - name: deadnix --fail
+        run: nix run nixpkgs#deadnix -- --fail .
+      - name: shellcheck
+        run: nix run nixpkgs#shellcheck -- *.sh
+
+  check:
+    name: check & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v30
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - uses: cachix/cachix-action@v15
+        with:
+          name: machine0
+          # Token is only present on pushes to main (configured as a repo
+          # secret). On PRs the action just pulls — never pushes.
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+      - name: nix flake check
+        run: nix flake check
+      - name: build base toplevel
+        run: nix build --print-out-paths .#nixosConfigurations.base.config.system.build.toplevel
+      - name: build loaded toplevel
+        run: nix build --print-out-paths .#nixosConfigurations.loaded.config.system.build.toplevel
+      - name: provision-is-no-op invariant
+        # The image build (mkImage) wraps the profile with image.nix; the
+        # provision build (nixosConfigurations.<p>) doesn't. If the toplevel
+        # store path differs between the two evaluations, post-image
+        # `nixos-rebuild switch` will rebuild etc.drv / nixos-system.drv
+        # / boot.json.drv etc and pull stdenv (~64 MiB) every time. Asserting
+        # equality here means provision stays a config-no-op.
+        run: |
+          set -euo pipefail
+          for PROFILE in base loaded; do
+            case "$PROFILE" in
+              base)   MODS='[ ./modules/base.nix ./modules/image.nix { system.stateVersion = "25.11"; } ]' ;;
+              loaded) MODS='[ ./modules/base.nix ./modules/loaded.nix ./modules/image.nix { system.stateVersion = "25.11"; } ]' ;;
+            esac
+            PLAIN=$(nix eval --raw ".#nixosConfigurations.${PROFILE}.config.system.build.toplevel.outPath")
+            IMG=$(nix eval --impure --raw --expr "
+              let f = builtins.getFlake (toString ./.);
+              in (f.inputs.nixpkgs.lib.nixosSystem {
+                system = \"x86_64-linux\";
+                specialArgs = { stateVersion = \"25.11\"; nixpkgsUnstable = f.inputs.nixpkgs-unstable; };
+                modules = ${MODS};
+              }).config.system.build.toplevel.outPath
+            ")
+            if [ "$PLAIN" = "$IMG" ]; then
+              echo "✓ $PROFILE: $PLAIN"
+            else
+              echo "✗ $PROFILE: hashes differ"
+              echo "  provision toplevel: $PLAIN"
+              echo "  image toplevel:     $IMG"
+              exit 1
+            fi
+          done

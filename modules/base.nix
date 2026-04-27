@@ -144,10 +144,11 @@ in
       };
       unitConfig = {
         ConditionPathExists = "!${metadataFile}";
-        After =
-          [ "network-pre.target" ]
-          ++ lib.optional config.networking.dhcpcd.enable "dhcpcd.service"
-          ++ lib.optional config.systemd.network.enable "systemd-networkd.service";
+        After = [
+          "network-pre.target"
+        ]
+        ++ lib.optional config.networking.dhcpcd.enable "dhcpcd.service"
+        ++ lib.optional config.systemd.network.enable "systemd-networkd.service";
       };
     };
 
@@ -156,7 +157,10 @@ in
     systemd.services.machine0-set-hostname = {
       description = "Set hostname from user-data";
       wantedBy = [ "network.target" ];
-      path = [ pkgs.jq pkgs.inetutils ];
+      path = [
+        pkgs.jq
+        pkgs.inetutils
+      ];
       script = ''
         set -e
         HOSTNAME=$(jq -er '.user_data | capture("hostName *= *\"(?<h>[^\"]+)\"") | .h' ${metadataFile}) || exit 0
@@ -213,8 +217,41 @@ in
       jq
     ];
 
-    nix.settings.experimental-features = [ "nix-command" "flakes" ];
-    nix.nixPath = [ "nixos-config=/etc/nixos/configuration.nix" "nixpkgs=flake:nixpkgs" ];
+    # Tag the toplevel "machine0" — kept in base (not image.nix) so that
+    # `nixos-rebuild switch` after image boot produces the same toplevel
+    # hash as the image build, making provision a no-op when nothing changed.
+    system.nixos.tags = [ "machine0" ];
+
+    nix.settings = {
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
+      max-jobs = 1;
+      cores = 1;
+      substituters = [
+        "https://cache.nixos.org"
+        "https://machine0.cachix.org"
+      ];
+      trusted-public-keys = [
+        "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+        "machine0.cachix.org-1:l34M6e3/+rNZJqlpANywfgeOhBBW6r0eo0VSVIh0PIk="
+      ];
+    };
+    nix.nixPath = [
+      "nixos-config=/etc/nixos/configuration.nix"
+      "nixpkgs=flake:nixpkgs"
+    ];
+
+    systemd.services.nix-daemon.serviceConfig = {
+      MemoryMax = "75%";
+      MemoryHigh = "65%";
+    };
+
+    # Compressed-RAM swap so nixos-rebuild eval doesn't OOM on 1 GB VMs.
+    # The nix-daemon caps above bound *builds*; eval runs in the user's
+    # nix client and would otherwise be killed by the kernel OOM-killer.
+    zramSwap.enable = true;
 
     # Bake the active module set into /etc/nixos so a first-boot
     # `nixos-rebuild switch` can re-evaluate the same base profile.
@@ -257,7 +294,10 @@ in
     system.autoUpgrade = {
       enable = true;
       flake = lib.mkDefault "github:fdmtl/machine0-nixos";
-      flags = [ "--refresh" "--no-write-lock-file" ];
+      flags = [
+        "--refresh"
+        "--no-write-lock-file"
+      ];
       dates = "04:00";
       randomizedDelaySec = "45min";
       allowReboot = true;

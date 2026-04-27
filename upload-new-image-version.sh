@@ -118,7 +118,7 @@ if [ "$EXISTS" -gt 0 ]; then
   fi
 
   echo ">> Waiting for image ${IMAGE_NAME} to reach READY state before mutating"
-  for i in $(seq 1 120); do
+  for _ in $(seq 1 120); do
     STATUS=$(machine0 images get "$IMAGE_NAME" --json | jq -r '.image.status')
     case "$STATUS" in
       READY)    echo ">> Image is READY";                                 break ;;
@@ -143,6 +143,13 @@ fi
 echo ">> Building image for profile: $PROFILE"
 IMAGE_PATH=$(./make-image.sh "$PROFILE")
 echo ">> Built: $IMAGE_PATH"
+
+if command -v cachix &>/dev/null; then
+  echo ">> Pushing system closure to Cachix..."
+  nix build ".#nixosConfigurations.${PROFILE}.config.system.build.toplevel" \
+    --extra-experimental-features nix-command --extra-experimental-features flakes \
+    --no-link --print-out-paths | cachix push machine0
+fi
 
 FILENAME="${IMAGE_NAME}.qcow2.gz"
 DEST="${PUBLIC_PATH}/${FILENAME}"

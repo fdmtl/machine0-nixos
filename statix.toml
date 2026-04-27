@@ -1,0 +1,6 @@
+# `repeated_keys` flags dot-notation reuse like
+#   boot.initrd.availableKernelModules = ...;
+#   boot.kernelParams = ...;
+# That pattern is idiomatic in NixOS modules and merging into a single
+# nested attrset hurts readability more than it helps.
+disabled = [ "repeated_keys" ]
