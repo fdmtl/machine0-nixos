@@ -5,8 +5,7 @@
 # Home Manager program modules. HM regenerates the dotfiles atomically on
 # every `nixos-rebuild switch`, so wrong-ownership / drift bugs from the
 # old `install`-based activation script can't recur.
-_:
-{
+_: {
   home.username = "nix";
   home.homeDirectory = "/home/nix";
   home.stateVersion = "25.11";
