@@ -43,6 +43,22 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             extra-substituters = https://cache.garnix.io
             extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+            max-jobs = auto
+            cores = 0
+      # Restore /nix/store across runs. Massive win on second-and-later runs:
+      # large derivations like openclaw-gateway (lancedb native compile) and
+      # the hermes-agent uv2nix Python wheels survive between runs even if
+      # garnix doesn't have a matching substitute.
+      - uses: nix-community/cache-nix-action@v6
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('flake.lock', 'modules/**', 'lib/**', 'flake.nix') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          # Save once a day max, even if nothing changed.
+          gc-max-store-size-linux: 8G
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-created: 0
+          purge-last-accessed: 86400
       - uses: cachix/cachix-action@v15
         with:
           name: machine0
@@ -51,14 +67,16 @@ jobs:
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       - name: nix flake check
         run: nix flake check
-      - name: build base toplevel
-        run: nix build --print-out-paths .#nixosConfigurations.base.config.system.build.toplevel
-      - name: build loaded toplevel
-        run: nix build --print-out-paths .#nixosConfigurations.loaded.config.system.build.toplevel
-      - name: build openclaw toplevel
-        run: nix build --print-out-paths .#nixosConfigurations.openclaw.config.system.build.toplevel
-      - name: build hermes toplevel
-        run: nix build --print-out-paths .#nixosConfigurations.hermes.config.system.build.toplevel
+      # Build all four toplevels in one invocation. Nix parallelizes
+      # derivations across the 4 profiles (lots of shared subpaths), so this
+      # is significantly faster than four sequential `nix build` calls.
+      - name: build all toplevels
+        run: |
+          nix build --print-out-paths \
+            .#nixosConfigurations.base.config.system.build.toplevel \
+            .#nixosConfigurations.loaded.config.system.build.toplevel \
+            .#nixosConfigurations.openclaw.config.system.build.toplevel \
+            .#nixosConfigurations.hermes.config.system.build.toplevel
       - name: provision-is-no-op invariant
         # The image build (mkImage) wraps the profile with image.nix; the
         # provision build (nixosConfigurations.<p>) doesn't. If the toplevel
