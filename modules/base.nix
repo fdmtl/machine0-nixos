@@ -233,6 +233,11 @@ in
       MemoryHigh = "65%";
     };
 
+    # Compressed-RAM swap so nixos-rebuild eval doesn't OOM on 1 GB VMs.
+    # The nix-daemon caps above bound *builds*; eval runs in the user's
+    # nix client and would otherwise be killed by the kernel OOM-killer.
+    zramSwap.enable = true;
+
     # Bake the active module set into /etc/nixos so a first-boot
     # `nixos-rebuild switch` can re-evaluate the same base profile.
     environment.etc."nixos/base.nix".source = ./base.nix;
