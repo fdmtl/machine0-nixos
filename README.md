@@ -11,8 +11,28 @@ Everything is a Nix flake. One evaluation produces an identical system whether y
 
 - **Reproducible** — the flake lockfile pins every input. The same config produces the same system, every time, on every machine.
 - **Atomic** — `nixos-rebuild switch` is all-or-nothing. A bad config rolls back; the running system is never half-configured.
-- **Declarative** — the entire system (packages, services, firewall, users) is defined in ~200 lines of Nix. No manual setup, no config drift.
+- **Declarative** — packages, services, firewall, the user, and the user's dotfiles (via Home Manager) are all defined in Nix. No manual setup, no config drift.
 - **Agent-friendly** — agents can provision a full dev environment with a single command. No shell scripts, no apt dependency chains, no version conflicts.
+
+## Layout
+
+Each module owns one concern, so finding (and changing) a setting is straightforward.
+
+```
+flake.nix                          # inputs (nixpkgs, nixpkgs-unstable, home-manager) + profiles
+lib/
+├── mksystem.nix                   # nixosSystem factory; injects specialArgs
+├── mkimage.nix                    # qcow2 image builder factory
+└── overlays.nix                   # unstable-nixpkgs overlay (eval-time + bake-time)
+modules/
+├── image.nix                      # gzipped qcow2 disk image
+├── motd.nix                       # machine0.motd.text → users.motd (PAM-correct)
+├── machine0.nix                   # metadata-driven systemd services + machine0 options
+├── profiles/{base,loaded}.nix     # the two top-level profiles
+├── core/                          # boot, networking, nix daemon, ssh, fail2ban, users, /etc/nixos
+├── development/                   # build tools, AI agents, rootless docker, npm
+└── home/                          # Home Manager hookup + per-user dotfiles
+```
 
 ## Profiles
 

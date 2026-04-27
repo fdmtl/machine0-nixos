@@ -62,15 +62,19 @@ jobs:
           set -euo pipefail
           for PROFILE in base loaded; do
             case "$PROFILE" in
-              base)   MODS='[ ./modules/base.nix ./modules/image.nix { system.stateVersion = "25.11"; } ]' ;;
-              loaded) MODS='[ ./modules/base.nix ./modules/loaded.nix ./modules/image.nix { system.stateVersion = "25.11"; } ]' ;;
+              base)   MODS='[ ./modules/profiles/base.nix ./modules/image.nix { system.stateVersion = "25.11"; } ]' ;;
+              loaded) MODS='[ ./modules/profiles/loaded.nix ./modules/image.nix { system.stateVersion = "25.11"; } ]' ;;
             esac
             PLAIN=$(nix eval --raw ".#nixosConfigurations.${PROFILE}.config.system.build.toplevel.outPath")
             IMG=$(nix eval --impure --raw --expr "
               let f = builtins.getFlake (toString ./.);
               in (f.inputs.nixpkgs.lib.nixosSystem {
                 system = \"x86_64-linux\";
-                specialArgs = { stateVersion = \"25.11\"; nixpkgsUnstable = f.inputs.nixpkgs-unstable; };
+                specialArgs = {
+                  stateVersion = \"25.11\";
+                  nixpkgsUnstable = f.inputs.nixpkgs-unstable;
+                  homeManager = f.inputs.home-manager;
+                };
                 modules = ${MODS};
               }).config.system.build.toplevel.outPath
             ")
