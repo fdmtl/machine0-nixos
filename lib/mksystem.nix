@@ -1,6 +1,6 @@
 # Builds a NixOS system for machine0. Wires up specialArgs (stateVersion,
-# unstable nixpkgs) so individual modules don't need to know about flake
-# plumbing.
+# unstable nixpkgs, home-manager flake) so individual modules don't need to
+# know about flake plumbing.
 {
   nixpkgs,
   inputs,
@@ -15,6 +15,7 @@ nixpkgs.lib.nixosSystem {
   specialArgs = {
     inherit stateVersion;
     nixpkgsUnstable = inputs.nixpkgs-unstable;
+    homeManager = inputs.home-manager;
   };
   modules = modules ++ [
     { system.stateVersion = stateVersion; }
