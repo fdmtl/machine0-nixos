@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
 #
 # update-all-images.sh — wipe the public web folder, delete every DRAFT
-# version of nixos-25-11-next and nixos-25-11-loaded-next, then call
+# version of each draft image listed in manifest.json, then call
 # ./upload-new-image-version.sh to publish a fresh DRAFT for each
 # (image, profile) pair.
+#
+# Single source of truth for (profile -> image) is manifest.json.
+# Draft image names are derived by appending "-next" to the image field.
 
 set -euo pipefail
 
 PUBLIC_PATH="${HOME}/docker-webserver/public"
 
-# (image_name, profile) pairs to refresh
-PAIRS=(
-  "nixos-25-11-next:base"
-  "nixos-25-11-loaded-next:loaded"
-)
-
 cd "$(dirname "$0")"
+
+if [ ! -f manifest.json ]; then
+  echo "Error: manifest.json not found in $(pwd)" >&2
+  exit 1
+fi
+
+# (image_name, profile) pairs to refresh — derived from manifest.json by
+# appending "-next" to each image name.
+mapfile -t PAIRS < <(jq -r '.profiles[] | "\(.image)-next:\(.profile)"' manifest.json)
 
 echo ">> Detecting public IP..."
 PUBLIC_IP=$(curl -fsS https://api.ipify.org)

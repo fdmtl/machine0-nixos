@@ -20,6 +20,8 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            extra-substituters = https://cache.garnix.io
+            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - name: nixfmt --check
         run: nix run nixpkgs#nixfmt-rfc-style -- --check $(find . -name '*.nix' -not -path './.git/*')
       - name: statix check
@@ -39,6 +41,8 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            extra-substituters = https://cache.garnix.io
+            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
       - uses: cachix/cachix-action@v15
         with:
           name: machine0
@@ -51,6 +55,10 @@ jobs:
         run: nix build --print-out-paths .#nixosConfigurations.base.config.system.build.toplevel
       - name: build loaded toplevel
         run: nix build --print-out-paths .#nixosConfigurations.loaded.config.system.build.toplevel
+      - name: build openclaw toplevel
+        run: nix build --print-out-paths .#nixosConfigurations.openclaw.config.system.build.toplevel
+      - name: build hermes toplevel
+        run: nix build --print-out-paths .#nixosConfigurations.hermes.config.system.build.toplevel
       - name: provision-is-no-op invariant
         # The image build (mkImage) wraps the profile with image.nix; the
         # provision build (nixosConfigurations.<p>) doesn't. If the toplevel
@@ -60,10 +68,12 @@ jobs:
         # equality here means provision stays a config-no-op.
         run: |
           set -euo pipefail
-          for PROFILE in base loaded; do
+          for PROFILE in base loaded openclaw hermes; do
             case "$PROFILE" in
-              base)   MODS='[ ./modules/profiles/base.nix ./modules/image.nix { system.stateVersion = "25.11"; } ]' ;;
-              loaded) MODS='[ ./modules/profiles/loaded.nix ./modules/image.nix { system.stateVersion = "25.11"; } ]' ;;
+              base)     MODS='[ ./modules/profiles/base.nix     ./modules/image.nix { system.stateVersion = "25.11"; } ]' ;;
+              loaded)   MODS='[ ./modules/profiles/loaded.nix   ./modules/image.nix { system.stateVersion = "25.11"; } ]' ;;
+              openclaw) MODS='[ ./modules/profiles/openclaw.nix ./modules/image.nix { system.stateVersion = "25.11"; } ]' ;;
+              hermes)   MODS='[ ./modules/profiles/hermes.nix   ./modules/image.nix { system.stateVersion = "25.11"; } ]' ;;
             esac
             PLAIN=$(nix eval --raw ".#nixosConfigurations.${PROFILE}.config.system.build.toplevel.outPath")
             IMG=$(nix eval --impure --raw --expr "
@@ -71,6 +81,7 @@ jobs:
               in (f.inputs.nixpkgs.lib.nixosSystem {
                 system = \"x86_64-linux\";
                 specialArgs = {
+                  inherit (f) inputs;
                   stateVersion = \"25.11\";
                   nixpkgsUnstable = f.inputs.nixpkgs-unstable;
                   homeManager = f.inputs.home-manager;

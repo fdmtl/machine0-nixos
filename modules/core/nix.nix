@@ -14,10 +14,15 @@
     substituters = [
       "https://cache.nixos.org"
       "https://machine0.cachix.org"
+      # nix-openclaw + (transitively) some hermes-agent deps publish to
+      # garnix. Without this, first-time builds compile lancedb / native
+      # voice libs / uv2nix Python wheels from source.
+      "https://cache.garnix.io"
     ];
     trusted-public-keys = [
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
       "machine0.cachix.org-1:l34M6e3/+rNZJqlpANywfgeOhBBW6r0eo0VSVIh0PIk="
+      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
     ];
   };
 

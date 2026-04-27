@@ -1,5 +1,5 @@
 {
-  description = "machine0 NixOS images — #base (minimal) and #loaded (dev stack)";
+  description = "machine0 NixOS images — base, loaded, openclaw, hermes";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
@@ -8,6 +8,11 @@
       url = "github:nix-community/home-manager/release-25.11";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Agent profiles. Both pin nixos-unstable upstream; we deliberately do
+    # NOT make them follow our 25.11 nixpkgs to avoid eval breakage.
+    nix-openclaw.url = "github:openclaw/nix-openclaw";
+    hermes-agent.url = "github:NousResearch/hermes-agent";
   };
 
   outputs =
@@ -23,9 +28,13 @@
       mkImage = import ./lib/mkimage.nix { inherit mkSystem; };
 
       # Each profile is the list of modules layered to produce that system.
+      # Keep in sync with manifest.json (single source of truth for the
+      # (profile -> machine0 image name) mapping consumed by build scripts).
       profiles = {
         base = [ ./modules/profiles/base.nix ];
         loaded = [ ./modules/profiles/loaded.nix ];
+        openclaw = [ ./modules/profiles/openclaw.nix ];
+        hermes = [ ./modules/profiles/hermes.nix ];
       };
     in
     {
