@@ -213,8 +213,25 @@ in
       jq
     ];
 
-    nix.settings.experimental-features = [ "nix-command" "flakes" ];
+    nix.settings = {
+      experimental-features = [ "nix-command" "flakes" ];
+      max-jobs = 1;
+      cores = 1;
+      substituters = [
+        "https://cache.nixos.org"
+        "https://machine0.cachix.org"
+      ];
+      trusted-public-keys = [
+        "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+        "machine0.cachix.org-1:l34M6e3/+rNZJqlpANywfgeOhBBW6r0eo0VSVIh0PIk="
+      ];
+    };
     nix.nixPath = [ "nixos-config=/etc/nixos/configuration.nix" "nixpkgs=flake:nixpkgs" ];
+
+    systemd.services.nix-daemon.serviceConfig = {
+      MemoryMax = "75%";
+      MemoryHigh = "65%";
+    };
 
     # Bake the active module set into /etc/nixos so a first-boot
     # `nixos-rebuild switch` can re-evaluate the same base profile.

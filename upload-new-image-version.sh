@@ -144,6 +144,12 @@ echo ">> Building image for profile: $PROFILE"
 IMAGE_PATH=$(./make-image.sh "$PROFILE")
 echo ">> Built: $IMAGE_PATH"
 
+if command -v cachix &>/dev/null; then
+  echo ">> Pushing system closure to Cachix..."
+  nix build ".#nixosConfigurations.${PROFILE}.config.system.build.toplevel" \
+    --no-link --print-out-paths | cachix push machine0
+fi
+
 FILENAME="${IMAGE_NAME}.qcow2.gz"
 DEST="${PUBLIC_PATH}/${FILENAME}"
 URL="http://${PUBLIC_IP}/${FILENAME}"
