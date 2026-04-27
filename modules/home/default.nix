@@ -13,5 +13,12 @@
 
   home-manager.useGlobalPkgs = true;
   home-manager.useUserPackages = true;
+
+  # If a non-HM-managed file already exists where HM wants to write
+  # (e.g. ~/.zshrc inherited from the old activation-script-based
+  # deployment, or files left over from a prior provisioning), move it
+  # aside instead of erroring out.
+  home-manager.backupFileExtension = "hm-backup";
+
   home-manager.users.nix = import ./nix-user.nix;
 }
