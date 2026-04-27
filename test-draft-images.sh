@@ -22,24 +22,45 @@ set -euo pipefail
 
 REGION="eu"
 SIZE="small"
-IMAGE_VERSION=6
 SSH_PROBE_TIMEOUT=900   # max seconds to wait for any VM to reach SSH-ready
 SSH_POLL_INTERVAL=3     # seconds between SSH probes
 
-# Each target = "vm-name|image-name|profile"
-#   vm-name : test VM to (re)create
-#   image   : machine0 image slug
-#   profile : flake attribute (passed as ".#<profile>" to provision)
-TARGETS=(
-  "test-base-v6|nixos-25-11-next|base"
-  "test-loaded-v6|nixos-25-11-loaded-next|loaded"
-)
-
 LOG_DIR="/tmp/test-draft-images-logs"
 
-# === HELPERS ================================================================
-
 cd "$(dirname "$0")"
+
+if [ ! -f manifest.json ]; then
+  echo "Error: manifest.json not found in $(pwd)" >&2
+  exit 1
+fi
+
+# Per-image draft version is auto-detected (latest DRAFT in machine0 backend)
+# rather than hardcoded — avoids breaking when different images are on
+# different version numbers (e.g. a brand-new image starting at v1 alongside
+# nixos-25-11 already on v6).
+draft_version_for() {
+  machine0 images versions ls "$1" --json \
+    | jq -r '[.[] | select(.displayStatus == "DRAFT")] | sort_by(.version) | last | .version'
+}
+
+# Each target = "vm-name|image-name|profile|version" — derived from manifest.json.
+#   vm-name : test VM to (re)create (test-<profile>-v<version>)
+#   image   : machine0 image slug (image field + "-next" suffix for drafts)
+#   profile : flake attribute (passed as ".#<profile>" to provision)
+#   version : draft version (auto-detected per-image)
+TARGETS=()
+while read -r line; do
+  IMAGE="${line%%:*}"
+  PROFILE="${line##*:}"
+  VERSION=$(draft_version_for "$IMAGE")
+  if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+    echo "Error: no DRAFT version found for image $IMAGE — run ./update-all-images.sh first" >&2
+    exit 1
+  fi
+  TARGETS+=("test-${PROFILE}-v${VERSION}|${IMAGE}|${PROFILE}|${VERSION}")
+done < <(jq -r '.profiles[] | "\(.image)-next:\(.profile)"' manifest.json)
+
+# === HELPERS ================================================================
 
 now_s()      { date +%s; }
 log()        { echo "[$(date -Iseconds)] $*"; }
@@ -47,6 +68,7 @@ fmt_secs()   { printf "%dm%02ds" $(( $1 / 60 )) $(( $1 % 60 )); }
 target_vm()      { echo "$1" | cut -d'|' -f1; }
 target_image()   { echo "$1" | cut -d'|' -f2; }
 target_profile() { echo "$1" | cut -d'|' -f3; }
+target_version() { echo "$1" | cut -d'|' -f4; }
 
 vm_exists() {
   machine0 ls --json | jq -e --arg n "$1" '.[] | select(.name == $n)' >/dev/null
@@ -61,11 +83,11 @@ destroy_vm_if_exists() {
 }
 
 create_vm() {
-  local vm="$1" image="$2"
-  log ">> Creating $vm from $image v$IMAGE_VERSION"
+  local vm="$1" image="$2" version="$3"
+  log ">> Creating $vm from $image v$version"
   machine0 new "$vm" \
     --size "$SIZE" --region "$REGION" \
-    --image "$image" --image-version "$IMAGE_VERSION" >/dev/null
+    --image "$image" --image-version "$version" >/dev/null
 }
 
 ssh_ready() {
@@ -121,7 +143,7 @@ cleanup_targets() {
 create_all_in_parallel() {
   local pids=()
   for spec in "${TARGETS[@]}"; do
-    create_vm "$(target_vm "$spec")" "$(target_image "$spec")" &
+    create_vm "$(target_vm "$spec")" "$(target_image "$spec")" "$(target_version "$spec")" &
     pids+=("$!")
   done
   for pid in "${pids[@]}"; do wait "$pid"; done

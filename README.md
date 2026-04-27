@@ -40,6 +40,10 @@ modules/
 |---|---|---|
 | `nixos-25-11` | `#base` | Minimal — virtio drivers, SSH hardening, metadata service, core utils. A clean slate for custom provisioning. |
 | `nixos-25-11-loaded` | `#loaded` | Full dev stack — Node.js, Python, Rust, Go, Docker, Claude Code, [Codex CLI](https://github.com/openai/codex), zsh + starship, fail2ban. Ready to code. |
+| `nixos-25-11-openclaw` | `#openclaw` | Loaded + [OpenClaw](https://github.com/openclaw/nix-openclaw) CLI. Boot, run `openclaw onboard --install-daemon`, you're live. |
+| `nixos-25-11-hermes` | `#hermes` | Loaded + [Hermes Agent](https://github.com/NousResearch/hermes-agent) CLI. Boot, run `hermes setup`, talk to it from Telegram/Discord/Slack. |
+
+The (profile → image) mapping is canonical in [`manifest.json`](manifest.json) and consumed by the build/test scripts.
 
 ### What's in `#loaded`
 

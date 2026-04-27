@@ -13,7 +13,7 @@ modules:
 nixpkgs.lib.nixosSystem {
   inherit system;
   specialArgs = {
-    inherit stateVersion;
+    inherit inputs stateVersion;
     nixpkgsUnstable = inputs.nixpkgs-unstable;
     homeManager = inputs.home-manager;
   };
