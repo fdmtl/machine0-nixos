@@ -147,6 +147,7 @@ echo ">> Built: $IMAGE_PATH"
 if command -v cachix &>/dev/null; then
   echo ">> Pushing system closure to Cachix..."
   nix build ".#nixosConfigurations.${PROFILE}.config.system.build.toplevel" \
+    --extra-experimental-features nix-command --extra-experimental-features flakes \
     --no-link --print-out-paths | cachix push machine0
 fi
 
