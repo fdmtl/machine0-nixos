@@ -5,7 +5,8 @@
 # Home Manager program modules. HM regenerates the dotfiles atomically on
 # every `nixos-rebuild switch`, so wrong-ownership / drift bugs from the
 # old `install`-based activation script can't recur.
-_: {
+{ pkgs, ... }:
+{
   home.username = "nix";
   home.homeDirectory = "/home/nix";
   home.stateVersion = "25.11";
@@ -121,6 +122,14 @@ _: {
 
   programs.eza.enable = true;
   programs.fzf.enable = true;
+
+  # ── Agent daemon shims ──────────────────────────────────────────────────
+  # Agent daemons (openclaw, hermes) generate systemd user services with a
+  # hardcoded PATH that omits /run/current-system/sw/bin. These symlinks
+  # bridge the gap via ~/.local/bin which IS in their PATH.
+  home.file.".local/bin/claude".source = "${pkgs.claude-code}/bin/claude";
+  home.file.".local/bin/codex".source = "${pkgs.codex}/bin/codex";
+  home.file.".local/bin/lsof".source = "${pkgs.lsof}/bin/lsof";
 
   # ── screen(1) ──────────────────────────────────────────────────────────
   # Home Manager 25.11 doesn't have a `programs.screen` module, so we drop
