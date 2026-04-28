@@ -32,7 +32,7 @@ jobs:
         run: nix run nixpkgs#shellcheck -- *.sh
 
   check:
-    name: check & build
+    name: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -67,16 +67,6 @@ jobs:
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       - name: nix flake check
         run: nix flake check
-      # Build all four toplevels in one invocation. Nix parallelizes
-      # derivations across the 4 profiles (lots of shared subpaths), so this
-      # is significantly faster than four sequential `nix build` calls.
-      - name: build all toplevels
-        run: |
-          nix build --print-out-paths \
-            .#nixosConfigurations.base.config.system.build.toplevel \
-            .#nixosConfigurations.loaded.config.system.build.toplevel \
-            .#nixosConfigurations.openclaw.config.system.build.toplevel \
-            .#nixosConfigurations.hermes.config.system.build.toplevel
       - name: provision-is-no-op invariant
         # The image build (mkImage) wraps the profile with image.nix; the
         # provision build (nixosConfigurations.<p>) doesn't. If the toplevel
