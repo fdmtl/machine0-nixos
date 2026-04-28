@@ -8,19 +8,20 @@
 #     -e PLAYWRIGHT_BROWSERS_PATH=$PLAYWRIGHT_BROWSERS_PATH \
 #     -e PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
 #     playwright -- npx @playwright/mcp@0.0.71 --headless
-{ pkgs, ... }:
+{
+  pkgs,
+  ...
+}:
 let
   playwrightBrowsers = pkgs.playwright-driver.browsers;
 in
 {
   environment.systemPackages = [ playwrightBrowsers ];
 
-  home-manager.users.nix =
-    _:
-    {
-      home.sessionVariables = {
-        PLAYWRIGHT_BROWSERS_PATH = "${playwrightBrowsers}";
-        PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
-      };
+  home-manager.users.nix = _: {
+    home.sessionVariables = {
+      PLAYWRIGHT_BROWSERS_PATH = "${playwrightBrowsers}";
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
     };
+  };
 }
