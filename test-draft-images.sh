@@ -42,7 +42,7 @@ draft_version_for() {
   machine0 images versions ls "$1" --json \
     | jq -r '
         ([.[] | select(.displayStatus == "DRAFT")] | sort_by(.version) | last | .version) //
-        (sort_by(.version) | last | .version)
+        (sort_by(.version) | last | .version) // ""
       '
 }
 
@@ -53,14 +53,11 @@ draft_version_for() {
 #   version : draft version (auto-detected per-image)
 #   size    : machine0 VM size (manifest.json `testSize`, falls back to DEFAULT_SIZE)
 TARGETS=()
-while read -r line; do
-  IMAGE="$(echo "$line" | cut -d'|' -f1)"
-  PROFILE="$(echo "$line" | cut -d'|' -f2)"
-  SIZE="$(echo "$line" | cut -d'|' -f3)"
-  [ -z "$SIZE" ] || [ "$SIZE" = "null" ] && SIZE="$DEFAULT_SIZE"
+while IFS='|' read -r IMAGE PROFILE SIZE; do
+  [[ -z "$SIZE" ]] && SIZE="$DEFAULT_SIZE"
   VERSION=$(draft_version_for "$IMAGE")
-  if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-    echo "Error: no DRAFT version found for image $IMAGE — run ./update-all-images.sh first" >&2
+  if [ -z "$VERSION" ]; then
+    echo "Error: no version found for image $IMAGE — run ./update-all-images.sh first" >&2
     exit 1
   fi
   TARGETS+=("test-${PROFILE}-v${VERSION}|${IMAGE}|${PROFILE}|${VERSION}|${SIZE}")
