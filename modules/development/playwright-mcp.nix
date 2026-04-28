@@ -16,7 +16,7 @@ in
   environment.systemPackages = [ playwrightBrowsers ];
 
   home-manager.users.nix =
-    { ... }:
+    _:
     {
       home.sessionVariables = {
         PLAYWRIGHT_BROWSERS_PATH = "${playwrightBrowsers}";

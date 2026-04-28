@@ -132,7 +132,7 @@
     text = ''
       #!/bin/sh
       export SHELL="${pkgs.bash}/bin/bash"
-      export PATH="${pkgs.bash}/bin:$PATH"
+      export PATH="${pkgs.bash}/bin:${pkgs.coreutils}/bin:$PATH"
       exec "${pkgs.claude-code}/bin/claude" "$@"
     '';
   };
