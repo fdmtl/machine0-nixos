@@ -2,7 +2,7 @@
   "profiles": [
     { "profile": "base",     "image": "nixos-25-11" },
     { "profile": "loaded",   "image": "nixos-25-11-loaded" },
-    { "profile": "openclaw", "image": "nixos-25-11-openclaw" },
-    { "profile": "hermes",   "image": "nixos-25-11-hermes" }
+    { "profile": "openclaw", "image": "nixos-25-11-openclaw", "testSize": "medium" },
+    { "profile": "hermes",   "image": "nixos-25-11-hermes",   "testSize": "medium" }
   ]
 }

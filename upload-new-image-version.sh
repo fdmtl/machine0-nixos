@@ -21,17 +21,17 @@
 #     machine0 images versions promote <imageName> <version>
 #
 # Examples:
-#   # base profile → nixos-25-11-next
+#   # base profile → nixos-25-11
 #   ./upload-new-image-version.sh \
 #     --profile base \
-#     --imageName nixos-25-11-next \
+#     --imageName nixos-25-11 \
 #     --publicPath ~/docker-webserver/public/ \
 #     --publicIp $(curl -fsS https://api.ipify.org)
 #
-#   # loaded profile → nixos-25-11-loaded-next
+#   # loaded profile → nixos-25-11-loaded
 #   ./upload-new-image-version.sh \
 #     --profile loaded \
-#     --imageName nixos-25-11-loaded-next \
+#     --imageName nixos-25-11-loaded \
 #     --publicPath ~/docker-webserver/public/ \
 #     --publicIp $(curl -fsS https://api.ipify.org)
 
@@ -49,7 +49,7 @@ Usage: $0 --profile <profile> --imageName <image_name> --publicPath <public_path
   --region defaults to eu (valid: us, uk, eu, asia)
 
 Example:
-  $0 --profile base --imageName nixos-25-11-next \\
+  $0 --profile base --imageName nixos-25-11 \\
     --publicPath ~/docker-webserver/public/ \\
     --publicIp \$(curl -fsS https://api.ipify.org)
 EOF
