@@ -16,7 +16,10 @@ let
   openclawPkg = inputs.nix-openclaw.packages.${system}.openclaw;
 in
 {
-  imports = [ ./loaded.nix ];
+  imports = [
+    ./loaded.nix
+    ../development/playwright-mcp.nix
+  ];
 
   environment.systemPackages = [ openclawPkg ];
 

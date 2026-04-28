@@ -127,9 +127,19 @@
   # Agent daemons (openclaw, hermes) generate systemd user services with a
   # hardcoded PATH that omits /run/current-system/sw/bin. These symlinks
   # bridge the gap via ~/.local/bin which IS in their PATH.
-  home.file.".local/bin/claude".source = "${pkgs.claude-code}/bin/claude";
+  home.file.".local/bin/claude" = {
+    executable = true;
+    text = ''
+      #!/bin/sh
+      export SHELL="${pkgs.bash}/bin/bash"
+      export PATH="${pkgs.bash}/bin:${pkgs.coreutils}/bin:$PATH"
+      exec "${pkgs.claude-code}/bin/claude" "$@"
+    '';
+  };
   home.file.".local/bin/codex".source = "${pkgs.codex}/bin/codex";
   home.file.".local/bin/lsof".source = "${pkgs.lsof}/bin/lsof";
+  home.file.".local/bin/bash".source = "${pkgs.bash}/bin/bash";
+  home.file.".local/bin/sh".source = "${pkgs.bash}/bin/sh";
 
   # ── screen(1) ──────────────────────────────────────────────────────────
   # Home Manager 25.11 doesn't have a `programs.screen` module, so we drop
