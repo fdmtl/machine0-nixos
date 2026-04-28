@@ -15,7 +15,10 @@ let
   hermesPkg = inputs.hermes-agent.packages.${system}.default;
 in
 {
-  imports = [ ./loaded.nix ];
+  imports = [
+    ./loaded.nix
+    ../development/playwright-mcp.nix
+  ];
 
   environment.systemPackages = [ hermesPkg ];
 
