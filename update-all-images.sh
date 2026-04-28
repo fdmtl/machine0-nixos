@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 #
 # update-all-images.sh — wipe the public web folder, delete every DRAFT
-# version of each draft image listed in manifest.json, then call
+# version of each image listed in manifest.json, then call
 # ./upload-new-image-version.sh to publish a fresh DRAFT for each
 # (image, profile) pair.
 #
 # Single source of truth for (profile -> image) is manifest.json.
-# Draft image names are derived by appending "-next" to the image field.
 
 set -euo pipefail
 
@@ -19,9 +18,8 @@ if [ ! -f manifest.json ]; then
   exit 1
 fi
 
-# (image_name, profile) pairs to refresh — derived from manifest.json by
-# appending "-next" to each image name.
-mapfile -t PAIRS < <(jq -r '.profiles[] | "\(.image)-next:\(.profile)"' manifest.json)
+# (image_name, profile) pairs to refresh — derived from manifest.json.
+mapfile -t PAIRS < <(jq -r '.profiles[] | "\(.image):\(.profile)"' manifest.json)
 
 echo ">> Detecting public IP..."
 PUBLIC_IP=$(curl -fsS https://api.ipify.org)

@@ -21,7 +21,7 @@ set -euo pipefail
 # === CONFIG =================================================================
 
 REGION="eu"
-SIZE="small"
+DEFAULT_SIZE="small"    # per-profile override via manifest.json `testSize`
 SSH_PROBE_TIMEOUT=900   # max seconds to wait for any VM to reach SSH-ready
 SSH_POLL_INTERVAL=3     # seconds between SSH probes
 
@@ -34,31 +34,34 @@ if [ ! -f manifest.json ]; then
   exit 1
 fi
 
-# Per-image draft version is auto-detected (latest DRAFT in machine0 backend)
-# rather than hardcoded — avoids breaking when different images are on
-# different version numbers (e.g. a brand-new image starting at v1 alongside
-# nixos-25-11 already on v6).
+# Per-image target version is auto-detected: prefer the latest DRAFT, but
+# fall back to the latest version overall if none exists. The fallback
+# covers brand-new images, where the first uploaded version is
+# auto-promoted to ACTIVE by the backend (no prior version to keep active).
 draft_version_for() {
   machine0 images versions ls "$1" --json \
-    | jq -r '[.[] | select(.displayStatus == "DRAFT")] | sort_by(.version) | last | .version'
+    | jq -r '
+        ([.[] | select(.displayStatus == "DRAFT")] | sort_by(.version) | last | .version) //
+        (sort_by(.version) | last | .version) // ""
+      '
 }
 
-# Each target = "vm-name|image-name|profile|version" — derived from manifest.json.
+# Each target = "vm-name|image-name|profile|version|size" — derived from manifest.json.
 #   vm-name : test VM to (re)create (test-<profile>-v<version>)
-#   image   : machine0 image slug (image field + "-next" suffix for drafts)
+#   image   : machine0 image slug
 #   profile : flake attribute (passed as ".#<profile>" to provision)
 #   version : draft version (auto-detected per-image)
+#   size    : machine0 VM size (manifest.json `testSize`, falls back to DEFAULT_SIZE)
 TARGETS=()
-while read -r line; do
-  IMAGE="${line%%:*}"
-  PROFILE="${line##*:}"
+while IFS='|' read -r IMAGE PROFILE SIZE; do
+  [[ -z "$SIZE" ]] && SIZE="$DEFAULT_SIZE"
   VERSION=$(draft_version_for "$IMAGE")
-  if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-    echo "Error: no DRAFT version found for image $IMAGE — run ./update-all-images.sh first" >&2
+  if [ -z "$VERSION" ]; then
+    echo "Error: no version found for image $IMAGE — run ./update-all-images.sh first" >&2
     exit 1
   fi
-  TARGETS+=("test-${PROFILE}-v${VERSION}|${IMAGE}|${PROFILE}|${VERSION}")
-done < <(jq -r '.profiles[] | "\(.image)-next:\(.profile)"' manifest.json)
+  TARGETS+=("test-${PROFILE}-v${VERSION}|${IMAGE}|${PROFILE}|${VERSION}|${SIZE}")
+done < <(jq -r '.profiles[] | "\(.image)|\(.profile)|\(.testSize // "")"' manifest.json)
 
 # === HELPERS ================================================================
 
@@ -69,6 +72,7 @@ target_vm()      { echo "$1" | cut -d'|' -f1; }
 target_image()   { echo "$1" | cut -d'|' -f2; }
 target_profile() { echo "$1" | cut -d'|' -f3; }
 target_version() { echo "$1" | cut -d'|' -f4; }
+target_size()    { echo "$1" | cut -d'|' -f5; }
 
 vm_exists() {
   machine0 ls --json | jq -e --arg n "$1" '.[] | select(.name == $n)' >/dev/null
@@ -83,10 +87,10 @@ destroy_vm_if_exists() {
 }
 
 create_vm() {
-  local vm="$1" image="$2" version="$3"
-  log ">> Creating $vm from $image v$version"
+  local vm="$1" image="$2" version="$3" size="$4"
+  log ">> Creating $vm from $image v$version (size=$size)"
   machine0 new "$vm" \
-    --size "$SIZE" --region "$REGION" \
+    --size "$size" --region "$REGION" \
     --image "$image" --image-version "$version" >/dev/null
 }
 
@@ -143,7 +147,7 @@ cleanup_targets() {
 create_all_in_parallel() {
   local pids=()
   for spec in "${TARGETS[@]}"; do
-    create_vm "$(target_vm "$spec")" "$(target_image "$spec")" "$(target_version "$spec")" &
+    create_vm "$(target_vm "$spec")" "$(target_image "$spec")" "$(target_version "$spec")" "$(target_size "$spec")" &
     pids+=("$!")
   done
   for pid in "${pids[@]}"; do wait "$pid"; done
