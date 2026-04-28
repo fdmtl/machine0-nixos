@@ -38,6 +38,7 @@ in
     inetutils
     htop
     btop
+    lsof
     ripgrep
     chafa
     screen

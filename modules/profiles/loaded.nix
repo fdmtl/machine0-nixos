@@ -23,6 +23,7 @@
     "d /home/nix/.local/bin 0755 nix nix -"
     "L+ /home/nix/.local/bin/claude - - - - ${pkgs.claude-code}/bin/claude"
     "L+ /home/nix/.local/bin/codex - - - - ${pkgs.codex}/bin/codex"
+    "L+ /home/nix/.local/bin/lsof - - - - ${pkgs.lsof}/bin/lsof"
   ];
 
   # Banner shown on SSH login. Lives only on loaded — base ships bare.
