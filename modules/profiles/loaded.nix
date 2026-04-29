@@ -2,6 +2,11 @@
 # AI agents, rootless Docker, npm, and a Home Manager-driven shell
 # (zsh + starship + zoxide + eza + screen) for the `nix` user.
 { pkgs, lib, ... }:
+let
+  esc = builtins.fromJSON ''"\u001b"'';
+  dc = "${esc}[2;36m";
+  r = "${esc}[0m";
+in
 {
   imports = [
     ./base.nix
@@ -19,13 +24,13 @@
   # Banner shown on SSH login. Lives only on loaded — base ships bare.
   machine0.motd.text = ''
 
-    ┌─────────────────────────────────────┐
-    │                                     │
-    │   machine0 — NixOS 25.11            │
-    │                                     │
-    │   Docs: https://machine0.io/docs    │
-    │                                     │
-    └─────────────────────────────────────┘
+    ${dc}╭─────────────────────────────────────╮${r}
+    ${dc}│${r}                                     ${dc}│${r}
+    ${dc}│${r}   machine0 — NixOS 25.11            ${dc}│${r}
+    ${dc}│${r}                                     ${dc}│${r}
+    ${dc}│${r}   Docs: https://machine0.io/docs    ${dc}│${r}
+    ${dc}│${r}                                     ${dc}│${r}
+    ${dc}╰─────────────────────────────────────╯${r}
 
   '';
 }

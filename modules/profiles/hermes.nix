@@ -13,6 +13,10 @@
 let
   inherit (pkgs.stdenv.hostPlatform) system;
   hermesPkg = inputs.hermes-agent.packages.${system}.default;
+  esc = builtins.fromJSON ''"\u001b"'';
+  dc = "${esc}[2;36m";
+  bw = "${esc}[1;97m";
+  r = "${esc}[0m";
 in
 {
   imports = [
@@ -25,23 +29,23 @@ in
   # mkForce overrides loaded.nix's MOTD at the same priority.
   machine0.motd.text = lib.mkForce ''
 
-    ┌──────────────────────────────────────────────────────────┐
-    │                                                          │
-    │   machine0 — NixOS 25.11 · Hermes Agent ☤                │
-    │                                                          │
-    │   Welcome to your new Hermes Agent VM!                   │
-    │                                                          │
-    │   Quick start:                                           │
-    │     $ hermes setup       # Run setup wizard              │
-    │     $ hermes             # Start chatting                │
-    │                                                          │
-    │   Messaging gateway (Telegram / Discord / Slack / ...):  │
-    │     $ hermes gateway setup                               │
-    │     $ hermes gateway start                               │
-    │                                                          │
-    │   Docs: https://hermes-agent.nousresearch.com/docs       │
-    │                                                          │
-    └──────────────────────────────────────────────────────────┘
+    ${dc}╭──────────────────────────────────────────────────────────╮${r}
+    ${dc}│${r}                                                          ${dc}│${r}
+    ${dc}│${r}   machine0 — NixOS 25.11 · Hermes Agent ☤                ${dc}│${r}
+    ${dc}│${r}                                                          ${dc}│${r}
+    ${dc}│${r}   Welcome to your new Hermes Agent VM!                   ${dc}│${r}
+    ${dc}│${r}                                                          ${dc}│${r}
+    ${dc}│${r}   Quick start:                                           ${dc}│${r}
+    ${dc}│${r}     ${bw}$ hermes setup       # Run setup wizard${r}              ${dc}│${r}
+    ${dc}│${r}     ${bw}$ hermes             # Start chatting${r}                ${dc}│${r}
+    ${dc}│${r}                                                          ${dc}│${r}
+    ${dc}│${r}   Messaging gateway (Telegram / Discord / Slack / ...):  ${dc}│${r}
+    ${dc}│${r}     ${bw}$ hermes gateway setup${r}                               ${dc}│${r}
+    ${dc}│${r}     ${bw}$ hermes gateway start${r}                               ${dc}│${r}
+    ${dc}│${r}                                                          ${dc}│${r}
+    ${dc}│${r}   Docs: https://hermes-agent.nousresearch.com/docs       ${dc}│${r}
+    ${dc}│${r}                                                          ${dc}│${r}
+    ${dc}╰──────────────────────────────────────────────────────────╯${r}
 
   '';
 

@@ -14,6 +14,17 @@
 let
   inherit (pkgs.stdenv.hostPlatform) system;
   openclawPkg = inputs.nix-openclaw.packages.${system}.openclaw;
+  esc = builtins.fromJSON ''"\u001b"'';
+  bel = builtins.fromJSON ''"\u0007"'';
+  dc = "${esc}[2;36m";
+  bw = "${esc}[1;97m";
+  bc = "${esc}[1;36m";
+  b  = "${esc}[1m";
+  ul = "${esc}[4m";
+  r  = "${esc}[0m";
+  osc = "${esc}]8;;";
+  dollar = b + "$" + r;
+  docsUrl = "https://docs.machine0.io/use/openclaw";
 in
 {
   imports = [
@@ -26,20 +37,19 @@ in
   # mkForce overrides loaded.nix's MOTD at the same priority.
   machine0.motd.text = lib.mkForce ''
 
-    ┌──────────────────────────────────────────────────────────┐
-    │                                                          │
-    │   machine0 — NixOS 25.11 · OpenClaw                      │
-    │                                                          │
-    │   Welcome to your new OpenClaw VM!                       │
-    │   Run this to start the onboarding process:              │
-    │                                                          │
-    │     $ openclaw onboard --install-daemon                  │
-    │                                                          │
-    │   Note: ~60s on first run — don't kill the process.      │
-    │                                                          │
-    │   Docs: https://github.com/openclaw/nix-openclaw         │
-    │                                                          │
-    └──────────────────────────────────────────────────────────┘
+    ${dc}╭──────────────────────────────────────────────────────────╮${r}
+    ${dc}│${r}                                                          ${dc}│${r}
+    ${dc}│${r}   ${bw}[ m0 ] NixOS 25.11 · OpenClaw${r}                          ${dc}│${r}
+    ${dc}│${r}                                                          ${dc}│${r}
+    ${dc}│${r}   Welcome to your new OpenClaw VM!                       ${dc}│${r}
+    ${dc}│${r}   Run this to start the onboarding process:              ${dc}│${r}
+    ${dc}│${r}                                                          ${dc}│${r}
+    ${dc}│${r}   ${dollar} ${bc}openclaw onboard --install-daemon${r}                    ${dc}│${r}
+    ${dc}│${r}                                                          ${dc}│${r}
+    ${dc}│${r}   Note: ~60s on first run — don't kill the process.      ${dc}│${r}
+    ${dc}│${r}   Docs: ${osc}${docsUrl}${bel}${ul}${docsUrl}${r}${osc}${bel}            ${dc}│${r}
+    ${dc}│${r}                                                          ${dc}│${r}
+    ${dc}╰──────────────────────────────────────────────────────────╯${r}
 
   '';
 
