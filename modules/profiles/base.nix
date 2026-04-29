@@ -17,13 +17,15 @@
 
   # Banner shown on SSH login.
   # mkDefault so loaded/openclaw/hermes can override at normal priority.
-  machine0.motd.text = lib.mkDefault (import ../../lib/mkMotd.nix {
-    title = "[ m0 ] NixOS 25.11";
-    body = [
-      "Built with the #base profile, fork to customize:"
-      "-> https://github.com/fdmtl/machine0-nixos"
-    ];
-  });
+  machine0.motd.text = lib.mkDefault (
+    import ../../lib/mkMotd.nix {
+      title = "[ m0 ] NixOS 25.11";
+      body = [
+        "Built with the #base profile, fork to customize:"
+        "-> https://github.com/fdmtl/machine0-nixos"
+      ];
+    }
+  );
 
   environment.systemPackages = with pkgs; [
     vim
