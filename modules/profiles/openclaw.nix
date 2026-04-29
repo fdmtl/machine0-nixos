@@ -23,25 +23,19 @@ in
 
   environment.systemPackages = [ openclawPkg ];
 
-  # mkForce overrides loaded.nix's MOTD at the same priority.
-  machine0.motd.text = lib.mkForce ''
-
-    ┌──────────────────────────────────────────────────────────┐
-    │                                                          │
-    │   machine0 — NixOS 25.11 · OpenClaw                      │
-    │                                                          │
-    │   Welcome to your new OpenClaw VM!                       │
-    │   Run this to start the onboarding process:              │
-    │                                                          │
-    │     $ openclaw onboard --install-daemon                  │
-    │                                                          │
-    │   Note: ~60s on first run — don't kill the process.      │
-    │                                                          │
-    │   Docs: https://github.com/openclaw/nix-openclaw         │
-    │                                                          │
-    └──────────────────────────────────────────────────────────┘
-
-  '';
+  # mkForce (50) overrides loaded.nix's normal priority (100).
+  machine0.motd.text = lib.mkForce (
+    import ../../lib/mkMotd.nix {
+      title = "[ m0 ] NixOS 25.11 · OpenClaw 🦞";
+      body = [
+        "# Start onboarding (~60s on first run):"
+        "$ openclaw onboard --install-daemon"
+        ""
+        "Built with the #openclaw profile, fork to customize:"
+        "-> https://github.com/fdmtl/machine0-nixos"
+      ];
+    }
+  );
 
   # Auto-upgrade tracks the openclaw profile, not the default (loaded).
   # Normal priority overrides core/nix.nix's mkDefault.
