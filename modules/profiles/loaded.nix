@@ -16,9 +16,12 @@
   # core/users.nix sets shell at the same priority.
   users.users.nix.shell = lib.mkForce pkgs.zsh;
 
-  # Banner shown on SSH login. Lives only on loaded — base ships bare.
+  # Normal priority (100) overrides base's mkDefault (1000).
   machine0.motd.text = import ../../lib/mkMotd.nix {
     title = "[ m0 ] NixOS 25.11";
-    docsUrl = "https://machine0.io/docs";
+    body = [
+      "Built with the #loaded profile, fork to customize:"
+      "-> https://github.com/fdmtl/machine0-nixos"
+    ];
   };
 }

@@ -12,7 +12,7 @@ let
 in
 {
   options.machine0.motd.text = mkOption {
-    type = types.lines;
+    type = types.str;
     default = "";
     description = "Banner shown to users on login (SSH + console). Empty = no banner.";
   };

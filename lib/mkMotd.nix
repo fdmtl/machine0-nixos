@@ -5,10 +5,16 @@
 #
 #   title   — bold white header text
 #   body    — list of strings; "" = blank separator, "$ cmd" = styled command
-#   docsUrl — underlined OSC 8 clickable hyperlink, prefixed with "Docs: "
 #   width   — box interior columns; null = auto (longest visible line + 6)
 #
-{ title, body ? [], docsUrl ? null, width ? null }:
+# Body line conventions:
+#   ""           — blank separator
+#   "$ cmd"      — styled command (bold $, bold cyan command)
+#   "# text"     — dim comment
+#   "-> url"     — underlined OSC 8 clickable link (https:// prepended if needed)
+#   anything else — plain text
+#
+{ title, body ? [], width ? null }:
 let
   # ── ANSI escape sequences ──────────────────────────────
   esc = builtins.fromJSON ''"\u001b"'';
@@ -17,6 +23,7 @@ let
   bw  = "${esc}[1;97m";    # bold white — title
   bc  = "${esc}[1;36m";    # bold cyan — commands
   b   = "${esc}[1m";       # bold — dollar sign
+  d   = "${esc}[2m";       # dim — comments
   ul  = "${esc}[4m";       # underline — links
   r   = "${esc}[0m";       # reset
   osc = "${esc}]8;;";      # OSC 8 hyperlink opener
@@ -29,7 +36,7 @@ let
   # Visual width — replace known multi-byte chars with single-byte stand-ins
   # so builtins.stringLength returns the column count.
   visWidth = s: builtins.stringLength (
-    builtins.replaceStrings [ "—" "·" "☤" ] [ "-" "." "X" ] s
+    builtins.replaceStrings [ "—" "·" "☤" "🦞" ] [ "-" "." "X" "XX" ] s
   );
 
   # Process one body line into a { plain; styled; } pair.
@@ -39,6 +46,16 @@ let
     else if builtins.substring 0 2 line == "$ " then
       let cmd = builtins.substring 2 (builtins.stringLength line - 2) line;
       in { plain = line; styled = b + "$" + r + " " + bc + cmd + r; }
+    else if builtins.substring 0 2 line == "# " then
+      let text = builtins.substring 2 (builtins.stringLength line - 2) line;
+      in { plain = line; styled = "${d}#${r} ${d}${text}${r}"; }
+    else if builtins.substring 0 3 line == "-> " then
+      let
+        text = builtins.substring 3 (builtins.stringLength line - 3) line;
+        hasScheme = builtins.substring 0 8 text == "https://"
+                 || builtins.substring 0 7 text == "http://";
+        url = if hasScheme then text else "https://${text}";
+      in { plain = text; styled = "${osc}${url}${bel}${ul}${text}${r}${osc}${bel}"; }
     else
       { plain = line; styled = line; };
 
@@ -49,13 +66,7 @@ let
 
   bodyEntries = map processLine body;
 
-  docsEntry = {
-    plain  = "Docs: ${docsUrl}";
-    styled = "Docs: ${osc}${docsUrl}${bel}${ul}${docsUrl}${r}${osc}${bel}";
-  };
-
-  contentBelow = bodyEntries
-    ++ (if docsUrl != null then [ docsEntry ] else []);
+  contentBelow = bodyEntries;
 
   allEntries = [ blank titleEntry ]
     ++ (if contentBelow != [] then [ blank ] ++ contentBelow else [])

@@ -22,21 +22,21 @@ in
 
   environment.systemPackages = [ hermesPkg ];
 
-  # mkForce overrides loaded.nix's MOTD at the same priority.
+  # mkForce (50) overrides loaded.nix's normal priority (100).
   machine0.motd.text = lib.mkForce (import ../../lib/mkMotd.nix {
     title = "[ m0 ] NixOS 25.11 · Hermes Agent ☤";
     body = [
-      "Welcome to your new Hermes Agent VM!"
+      "# Quick start:"
+      "$ hermes setup"
+      "$ hermes"
       ""
-      "Quick start:"
-      "$ hermes setup       # Run setup wizard"
-      "$ hermes             # Start chatting"
-      ""
-      "Messaging gateway (Telegram / Discord / Slack / ...):"
+      "# Messaging gateway (Telegram / Discord / Slack / ...):"
       "$ hermes gateway setup"
       "$ hermes gateway start"
+      ""
+      "Built with the #hermes profile, fork to customize:"
+      "-> https://github.com/fdmtl/machine0-nixos"
     ];
-    docsUrl = "https://hermes-agent.nousresearch.com/docs";
   });
 
   # Auto-upgrade tracks the hermes profile, not the default (loaded).
