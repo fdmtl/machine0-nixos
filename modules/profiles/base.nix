@@ -19,7 +19,7 @@
   # mkDefault so loaded/openclaw/hermes can override at normal priority.
   machine0.motd.text = lib.mkDefault (
     import ../../lib/mkMotd.nix {
-      title = "[ m0 ] NixOS 25.11";
+      title = "[ m0 ] NixOS 25.11 · Minimal";
       body = [
         "Built with the #base profile, fork to customize:"
         "-> https://github.com/fdmtl/machine0-nixos"
