@@ -18,6 +18,7 @@ in
   imports = [
     ./loaded.nix
     ../development/playwright-mcp.nix
+    inputs.hermes-agent.nixosModules.default
   ];
 
   environment.systemPackages = [ hermesPkg ];
