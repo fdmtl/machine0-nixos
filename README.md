@@ -11,13 +11,13 @@ curl -LsSf https://machine0.io/install.sh | sh
 machine0 new nixos --image nixos-25-11-loaded --size medium
 
 # clone the repo, customize and rebuild
-git clone https://github.com/fdmtl/machine0-nixos.git .
+git clone https://github.com/fdmtl/machine0-nixos.git && cd machine0-nixos
 claude -p "make any change to the loaded profile you'd like"
 machine0 provision nixos ./flake.nix#loaded
 
 # or, rebuild from within the VM
 machine0 ssh nixos
-git clone https://github.com/fdmtl/machine0-nixos.git .
+git clone https://github.com/fdmtl/machine0-nixos.git && cd machine0-nixos
 ./rebuild.sh
 ```
 > **Note:** We strongly recommend `--size medium` or larger. Nix builds are CPU and memory intensive — small instances work but take forever.
