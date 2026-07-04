@@ -39,7 +39,8 @@ let
   # Visual width — replace known multi-byte chars with single-byte stand-ins
   # so builtins.stringLength returns the column count.
   visWidth =
-    s: builtins.stringLength (builtins.replaceStrings [ "—" "·" "☤" "🦞" ] [ "-" "." "X" "XX" ] s);
+    s:
+    builtins.stringLength (builtins.replaceStrings [ "—" "·" "☤" "🦞" "🤖" ] [ "-" "." "X" "XX" "XX" ] s);
 
   # Process one body line into a { plain; styled; } pair.
   processLine =
