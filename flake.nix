@@ -1,5 +1,5 @@
 {
-  description = "machine0 NixOS images — base, loaded, openclaw, hermes";
+  description = "machine0 NixOS images — base, loaded, openclaw, hermes, bot";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
@@ -35,6 +35,7 @@
         loaded = [ ./modules/profiles/loaded.nix ];
         openclaw = [ ./modules/profiles/openclaw.nix ];
         hermes = [ ./modules/profiles/hermes.nix ];
+        bot = [ ./modules/profiles/bot.nix ];
       };
     in
     {

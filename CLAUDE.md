@@ -1,6 +1,6 @@
 # machine0-nixos
 
-NixOS images for machine0 VMs. Four profiles: base, loaded, openclaw, hermes.
+NixOS images for machine0 VMs. Five profiles: base, loaded, openclaw, hermes, bot.
 
 ## Codebase layout
 
@@ -18,6 +18,7 @@ modules/
     loaded.nix                    # base + dev stack (packages, services, home-manager/zsh)
     openclaw.nix                  # loaded + playwright-mcp + openclaw CLI
     hermes.nix                    # loaded + playwright-mcp + hermes CLI + nixosModule
+    bot.nix                       # loaded + claude autostarted in a screen session
   core/                           # System-level modules shared by all profiles
     boot.nix networking.nix nix.nix ssh.nix fail2ban.nix system.nix users.nix
   development/
@@ -37,12 +38,14 @@ modules/
 ```
 base → loaded → openclaw
                  hermes
+                 bot
 ```
 
 - **base**: core/* modules, basic CLI packages (vim, git, curl, htop, wget, tmux, jq). Bash shell.
 - **loaded**: base + development/packages.nix + development/services.nix + home/. Zsh shell. Rootless Docker, npm, nginx, firewall 80/443.
 - **openclaw**: loaded + playwright-mcp + openclaw CLI from nix-openclaw flake input.
 - **hermes**: loaded + playwright-mcp + hermes CLI + nixosModule from hermes-agent flake input.
+- **bot**: loaded + `claude-screen` systemd service that autostarts Claude Code in a detached screen session (attach: `screen -x claude`). Auto-reboot disabled.
 
 ## Where to make changes
 
@@ -78,6 +81,7 @@ machine0 get <name> --json
   - loaded → `nixos-25-11-loaded`
   - openclaw → `nixos-25-11-openclaw`
   - hermes → `nixos-25-11-hermes`
+  - bot → `nixos-25-11-bot`
 
 **User doesn't name a VM** (e.g. "add nginx to the loaded profile"):
 - Create a temporary VM for test provisioning:
@@ -95,7 +99,7 @@ machine0 get <name> --json
 machine0 provision <vm> ".#<profile>"
 ```
 
-The flake reference is always `.#<profile>` where profile is one of: `base`, `loaded`, `openclaw`, `hermes`. This syncs the local flake to the VM and runs `nixos-rebuild switch`. Use a 10-minute timeout — builds can be slow.
+The flake reference is always `.#<profile>` where profile is one of: `base`, `loaded`, `openclaw`, `hermes`, `bot`. This syncs the local flake to the VM and runs `nixos-rebuild switch`. Use a 10-minute timeout — builds can be slow.
 
 ### 4. Verify
 

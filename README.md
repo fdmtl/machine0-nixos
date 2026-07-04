@@ -30,5 +30,6 @@ git clone https://github.com/fdmtl/machine0-nixos.git && cd machine0-nixos
 | `nixos-25-11-loaded` | `#loaded` | Modern agents (Claude, Codex...) and dev tools (e.g. Docker, Node, Python...). |
 | `nixos-25-11-openclaw` | `#openclaw` | Loaded + [OpenClaw](https://github.com/openclaw/nix-openclaw). |
 | `nixos-25-11-hermes` | `#hermes` | Loaded + [Hermes Agent](https://github.com/NousResearch/hermes-agent). |
+| `nixos-25-11-bot` | `#bot` | Loaded + Claude Code autostarted in a screen session (`screen -x claude`). |
 
 The (profile → image) mapping is canonical in [`manifest.json`](manifest.json) and consumed by the build/test scripts.
