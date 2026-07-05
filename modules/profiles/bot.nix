@@ -2,14 +2,38 @@
 # session at boot. Attach with `screen -x claude` (advertised in MOTD).
 { pkgs, lib, ... }:
 let
+  # Submitted on the very first start, so the thread is already running
+  # when you attach. Fork to customize.
+  initialPrompt = ''
+    You are the resident agent on a fresh machine0 bot VM (NixOS). Look
+    around: check the hardware (CPU, RAM, disk), the installed tooling,
+    and confirm docker works. Write a short MACHINE.md in the current
+    directory summarising what this box can do, then wait for further
+    instructions.
+  '';
+
+  # Claude stores conversations per-cwd under ~/.claude/projects/<escaped
+  # cwd>. Presence of a session file is what distinguishes "resume the
+  # thread" from "first real start".
+  sessionDir = "/home/nix/.claude/projects/-home-nix-workspace";
+
   # Store-path launcher — a root-managed boot service must not exec the
   # user-writable ~/.local/bin/claude shim (user-level compromise would
   # become persistent, and `nix` has passwordless sudo). Mirrors the
   # shim's env bridging (see home/nix-user.nix).
+  #
+  # Restart flow: a conversation exists → --continue resumes it; none
+  # exists → submit the initial prompt. If the first boot was
+  # unauthenticated and the prompt never ran, no session file is written,
+  # so the next start retries the initial prompt — the two branches
+  # converge on a resumable thread.
   claudeLauncher = pkgs.writeShellScript "claude-screen-launcher" ''
     export SHELL="${pkgs.bashInteractive}/bin/bash"
     export PATH="${pkgs.bashInteractive}/bin:${pkgs.coreutils}/bin:$PATH"
-    exec "${pkgs.claude-code}/bin/claude" "$@"
+    if [ -n "$(ls ${sessionDir}/*.jsonl 2>/dev/null)" ]; then
+      exec "${pkgs.claude-code}/bin/claude" --continue
+    fi
+    exec "${pkgs.claude-code}/bin/claude" ${lib.escapeShellArg initialPrompt}
   '';
 in
 {

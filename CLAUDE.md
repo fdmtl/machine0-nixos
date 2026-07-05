@@ -45,7 +45,7 @@ base → loaded → openclaw
 - **loaded**: base + development/packages.nix + development/services.nix + home/. Zsh shell. Rootless Docker, npm, nginx, firewall 80/443.
 - **openclaw**: loaded + playwright-mcp + openclaw CLI from nix-openclaw flake input.
 - **hermes**: loaded + playwright-mcp + hermes CLI + nixosModule from hermes-agent flake input.
-- **bot**: loaded + `claude-screen` systemd service that autostarts Claude Code in a detached screen session (attach: `screen -x claude`). Auto-reboot disabled.
+- **bot**: loaded + `claude-screen` systemd service that autostarts Claude Code in a detached screen session (attach: `screen -x claude`). First start submits an initial prompt; later starts resume the thread with `--continue`. Auto-reboot disabled.
 
 ## Where to make changes
 
