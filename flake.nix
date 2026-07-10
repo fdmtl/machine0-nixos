@@ -45,5 +45,52 @@
       nixosConfigurations = builtins.mapAttrs (_: mkSystem) profiles // {
         default = self.nixosConfigurations.loaded;
       };
+
+      # Reusable builders, closed over this flake's inputs. Consumers pass a
+      # module list: machine0.lib.mkSystem [ machine0.nixosModules.loaded ./mine.nix ]
+      lib = { inherit mkSystem mkImage; };
+
+      # Profile entry-point modules (each imports its full parent chain).
+      # These require machine0.lib.mkSystem — they read machine0-specific
+      # specialArgs and will not evaluate under a plain nixosSystem.
+      nixosModules =
+        builtins.mapAttrs (
+          name: modules:
+          nixpkgs.lib.setDefaultModuleLocation "machine0-nixos#nixosModules.${name}" {
+            imports = modules;
+          }
+        ) profiles
+        // {
+          default = self.nixosModules.loaded;
+        };
+
+      # Eval-only guards for the exported consumer API (lib + nixosModules),
+      # one per profile plus the image path. Each check is a trivial
+      # runCommand whose *instantiation* forces the full system eval, so
+      # `nix flake check` and the CI drvPath step both catch API regressions
+      # without ever building a system or disk image.
+      checks.${system} =
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          evalGuard =
+            name: drv:
+            pkgs.runCommand "consumer-api-${name}" { } ''
+              echo "${builtins.unsafeDiscardStringContext drv.drvPath}" > "$out"
+            '';
+        in
+        builtins.mapAttrs (
+          name: _:
+          evalGuard name
+            (mkSystem [
+              self.nixosModules.${name}
+              {
+                machine0.motd.text = nixpkgs.lib.mkOverride 10 "consumer-api check";
+                system.autoUpgrade.enable = nixpkgs.lib.mkForce false;
+              }
+            ]).config.system.build.toplevel
+        ) profiles
+        // {
+          consumer-image = evalGuard "image" (mkImage [ self.nixosModules.base ]);
+        };
     };
 }

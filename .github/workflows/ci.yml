@@ -33,3 +33,9 @@ jobs:
         run: nix run nixpkgs#deadnix -- --fail .
       - name: shellcheck
         run: nix run nixpkgs#shellcheck -- *.sh
+      - name: consumer API eval
+        run: |
+          for c in base loaded openclaw hermes consumer-image; do
+            nix eval --raw ".#checks.x86_64-linux.$c.drvPath"
+            echo " OK: $c"
+          done
