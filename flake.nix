@@ -75,7 +75,7 @@
           evalGuard =
             name: drv:
             pkgs.runCommand "consumer-api-${name}" { } ''
-              echo ${builtins.unsafeDiscardStringContext drv.drvPath} > $out
+              echo "${builtins.unsafeDiscardStringContext drv.drvPath}" > "$out"
             '';
         in
         builtins.mapAttrs (
