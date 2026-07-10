@@ -45,5 +45,36 @@
       nixosConfigurations = builtins.mapAttrs (_: mkSystem) profiles // {
         default = self.nixosConfigurations.loaded;
       };
+
+      # Reusable builders, closed over this flake's inputs. Consumers pass a
+      # module list: machine0.lib.mkSystem [ machine0.nixosModules.loaded ./mine.nix ]
+      lib = { inherit mkSystem mkImage; };
+
+      # Profile entry-point modules (each imports its full parent chain).
+      nixosModules =
+        builtins.mapAttrs (_: modules: {
+          imports = modules;
+        }) profiles
+        // {
+          default = self.nixosModules.loaded;
+        };
+
+      # Eval-only guards for the exported consumer API (lib + nixosModules),
+      # one per profile plus the image path. CI evals the drvPaths so a
+      # regression in the exported surface fails fast without building.
+      checks.${system} =
+        builtins.mapAttrs (
+          name: _:
+          (mkSystem [
+            self.nixosModules.${name}
+            {
+              machine0.motd.text = nixpkgs.lib.mkOverride 10 "consumer-api check";
+              system.autoUpgrade.enable = nixpkgs.lib.mkForce false;
+            }
+          ]).config.system.build.toplevel
+        ) profiles
+        // {
+          consumer-image = mkImage [ self.nixosModules.base ];
+        };
     };
 }
