@@ -51,30 +51,46 @@
       lib = { inherit mkSystem mkImage; };
 
       # Profile entry-point modules (each imports its full parent chain).
+      # These require machine0.lib.mkSystem — they read machine0-specific
+      # specialArgs and will not evaluate under a plain nixosSystem.
       nixosModules =
-        builtins.mapAttrs (_: modules: {
-          imports = modules;
-        }) profiles
+        builtins.mapAttrs (
+          name: modules:
+          nixpkgs.lib.setDefaultModuleLocation "machine0-nixos#nixosModules.${name}" {
+            imports = modules;
+          }
+        ) profiles
         // {
           default = self.nixosModules.loaded;
         };
 
       # Eval-only guards for the exported consumer API (lib + nixosModules),
-      # one per profile plus the image path. CI evals the drvPaths so a
-      # regression in the exported surface fails fast without building.
+      # one per profile plus the image path. Each check is a trivial
+      # runCommand whose *instantiation* forces the full system eval, so
+      # `nix flake check` and the CI drvPath step both catch API regressions
+      # without ever building a system or disk image.
       checks.${system} =
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          evalGuard =
+            name: drv:
+            pkgs.runCommand "consumer-api-${name}" { } ''
+              echo ${builtins.unsafeDiscardStringContext drv.drvPath} > $out
+            '';
+        in
         builtins.mapAttrs (
           name: _:
-          (mkSystem [
-            self.nixosModules.${name}
-            {
-              machine0.motd.text = nixpkgs.lib.mkOverride 10 "consumer-api check";
-              system.autoUpgrade.enable = nixpkgs.lib.mkForce false;
-            }
-          ]).config.system.build.toplevel
+          evalGuard name
+            (mkSystem [
+              self.nixosModules.${name}
+              {
+                machine0.motd.text = nixpkgs.lib.mkOverride 10 "consumer-api check";
+                system.autoUpgrade.enable = nixpkgs.lib.mkForce false;
+              }
+            ]).config.system.build.toplevel
         ) profiles
         // {
-          consumer-image = mkImage [ self.nixosModules.base ];
+          consumer-image = evalGuard "image" (mkImage [ self.nixosModules.base ]);
         };
     };
 }
