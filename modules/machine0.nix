@@ -1,11 +1,14 @@
 # machine0 platform integration — declares the machine0.* options and the
-# three metadata-driven systemd services that turn a generic NixOS boot
+# four metadata-driven systemd services that turn a generic NixOS boot
 # into a machine0 VM:
 #
-#   machine0-metadata     — fetches /run/do-metadata/v1.json from the
-#                           hypervisor link-local endpoint.
-#   machine0-set-hostname — extracts the hostname from user-data.
-#   machine0-ssh-keys     — installs SSH keys before sshd starts.
+#   machine0-metadata       — fetches /run/do-metadata/v1.json from the
+#                             hypervisor link-local endpoint.
+#   machine0-set-hostname   — extracts the hostname from user-data.
+#   machine0-ssh-keys       — installs SSH keys before sshd starts.
+#   machine0-profile-inject — extracts and runs the machine0 inject payload
+#                             (profile credentials + env vars) from
+#                             user-data, once per droplet.
 {
   config,
   pkgs,
@@ -15,6 +18,21 @@
 let
   inherit (lib) mkOption optional types;
   metadataFile = "/run/do-metadata/v1.json";
+  # Everything the machine0 inject payload and `machine0 profiles deploy`
+  # script may call as root. Pinned on EVERY profile (base included) so
+  # injection has full coverage regardless of what the profile ships in its
+  # system path; /etc/machine0/tool-path exposes the same set to the
+  # SSH-delivered deploy script.
+  injectTools = with pkgs; [
+    bash
+    coreutils
+    jq
+    gnugrep
+    gnused
+    python3
+    git
+    util-linux
+  ];
 in
 {
   options.machine0.profile.loaded = mkOption {
@@ -105,6 +123,81 @@ in
       unitConfig = {
         ConditionPathExists = "!/home/nix/.ssh/authorized_keys";
         Before = optional config.services.openssh.enable "sshd.service";
+        After = [ "machine0-metadata.service" ];
+        Requires = [ "machine0-metadata.service" ];
+      };
+    };
+
+    # Pinned tool PATH for machine0 root scripts. The `machine0 profiles
+    # deploy` script (delivered over SSH) prepends this to its PATH; the
+    # inject unit below gets the same set via its `path`.
+    environment.etc."machine0/tool-path".text = "${lib.makeBinPath injectTools}\n";
+
+    # machine0-managed user env vars (profiles / env sets): the backend
+    # reconciles a user-writable file; this hook sources it for login shells
+    # (/etc/profile) and every zsh invocation (/etc/zshenv). Non-interactive
+    # bash SSH commands read neither — that path is covered by
+    # PermitUserEnvironment + ~/.ssh/environment (core/ssh.nix).
+    environment.shellInit = ''
+      if [ -r "$HOME/.machine0/env.sh" ]; then
+        . "$HOME/.machine0/env.sh"
+      fi
+    '';
+
+    # Extract and run the machine0 inject payload (profile credentials + env
+    # vars) from user-data, once per INSTANCE (droplet id). BYTE-CONTRACT
+    # with the backend generator (machine0 repo,
+    # apps/api/src/providers/cloud-init.ts generateNixOSUserData): the marker
+    # lines and the strip/decode pipeline below must match byte-for-byte —
+    # the backend's cloud-init.test.ts replicates this pipeline verbatim.
+    #
+    # Not Before=sshd on purpose (Ubuntu runcmd parity — creds may land a few
+    # seconds after SSH opens; the deploy script waits, users retry).
+    #
+    # Semantics:
+    #  - Same droplet id as the last successful run → exit 0. Plain reboots
+    #    and nightly autoUpgrade never re-apply the creation-time payload.
+    #  - New droplet id (resume-from-suspend, machine created from a
+    #    snapshot) → run with THIS droplet's fresh user-data.
+    #  - The guard check MUST stay the first step: `machine0 profiles
+    #    deploy` claims the instance-id after rewriting the machine, so a
+    #    queued/failed first-boot inject can never later re-apply the stale
+    #    creation payload over a deploy.
+    #  - Writing the id even for an EMPTY payload is safe: user_data is
+    #    immutable per droplet, so a payload change always arrives with a
+    #    new droplet id.
+    #  - A FAILED inject writes no id and retries on the next boot.
+    systemd.services.machine0-profile-inject = {
+      description = "Apply machine0 profile inject payload from user-data";
+      wantedBy = [ "multi-user.target" ];
+      path = injectTools;
+      script = ''
+        set -eu
+        instance_id=$(jq -r '.droplet_id // empty' ${metadataFile})
+        if [ -z "$instance_id" ]; then
+          instance_id=$(jq -r '.user_data // ""' ${metadataFile} | sha256sum | cut -d" " -f1)
+        fi
+        if [ -f /var/lib/machine0/instance-id ] \
+          && [ "$(cat /var/lib/machine0/instance-id)" = "$instance_id" ]; then
+          exit 0
+        fi
+        umask 077
+        jq -r '.user_data // ""' ${metadataFile} \
+          | sed -n '/^# machine0-inject-begin$/,/^# machine0-inject-end$/p' \
+          | sed -e '/^# machine0-inject-/d' -e 's/^# //' \
+          | base64 -d > "$STATE_DIRECTORY/inject.sh"
+        if [ -s "$STATE_DIRECTORY/inject.sh" ]; then
+          bash "$STATE_DIRECTORY/inject.sh"
+        fi
+        rm -f "$STATE_DIRECTORY/inject.sh"
+        printf '%s\n' "$instance_id" > /var/lib/machine0/instance-id
+      '';
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        StateDirectory = "machine0";
+      };
+      unitConfig = {
         After = [ "machine0-metadata.service" ];
         Requires = [ "machine0-metadata.service" ];
       };

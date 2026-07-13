@@ -46,6 +46,15 @@
 
       # Only the provisioned user may log in.
       AllowUsers = [ "nix" ];
+
+      # machine0 profile/env injection writes ~/.ssh/environment (sshd's own
+      # KEY=value format). This makes the vars reach EVERY ssh session
+      # regardless of shell — including non-interactive `ssh vm cmd` under
+      # bash, which reads no rc file (verified live: /etc/bashrc does not
+      # source /etc/set-environment). Single-user workload VM with
+      # passwordless sudo: the usual LD_PRELOAD escalation concern doesn't
+      # apply — there is no privilege boundary to cross.
+      PermitUserEnvironment = true;
     };
   };
 
