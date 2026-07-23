@@ -46,9 +46,16 @@
         default = self.nixosConfigurations.loaded;
       };
 
-      # Reusable builders, closed over this flake's inputs. Consumers pass a
-      # module list: machine0.lib.mkSystem [ machine0.nixosModules.loaded ./mine.nix ]
-      lib = { inherit mkSystem mkImage; };
+      # Reusable builders. mkSystem/mkImage are closed over this flake's
+      # inputs; consumers pass a module list:
+      #   machine0.lib.mkSystem [ machine0.nixosModules.loaded ./mine.nix ]
+      # mkMotd is the pure banner builder ({ title, body ? [], width ? null }
+      # -> string) used by the profiles' MOTDs, exported so consumer profiles
+      # can build a styled banner instead of a plain string.
+      lib = {
+        inherit mkSystem mkImage;
+        mkMotd = import ./lib/mkMotd.nix;
+      };
 
       # Profile entry-point modules (each imports its full parent chain).
       # These require machine0.lib.mkSystem — they read machine0-specific
@@ -84,7 +91,21 @@
             (mkSystem [
               self.nixosModules.${name}
               {
-                machine0.motd.text = nixpkgs.lib.mkOverride 10 "consumer-api check";
+                # Route the override through self.lib.mkMotd so the eval
+                # guards also pin the exported banner-builder API (every
+                # body-line convention: plain, blank, command, comment, link).
+                machine0.motd.text = nixpkgs.lib.mkOverride 10 (
+                  self.lib.mkMotd {
+                    title = "consumer-api check";
+                    body = [
+                      "plain line"
+                      ""
+                      "$ machine0 ssh check"
+                      "# dim comment"
+                      "-> machine0.io"
+                    ];
+                  }
+                );
                 system.autoUpgrade.enable = nixpkgs.lib.mkForce false;
               }
             ]).config.system.build.toplevel
