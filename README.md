@@ -39,7 +39,7 @@ Toggleable via options on `base` and everything built on it (`loaded`/`openclaw`
 
 | Option | Description |
 |---|---|
-| `machine0.codexAppServer.enable` | Always-on Codex app-server (`modules/services/codex-app-server.nix`), systemd-supervised over a Unix control socket (`machine0.codexAppServer.socketPath`, default `/run/codex-app-server/app-server.sock`). Needs `pkgs.codex` (so a `loaded`-derived profile) and a VM created with a machine0 profile that has a connected `codex` integration (`machine0 new <vm> --profile <p>`) — see `machine0-profile-inject` below. SSH in and run `codex app-server proxy --sock <socketPath>` to attach a client. |
+| `machine0.codexAppServer.enable` | Always-on Codex app-server (`modules/services/codex-app-server.nix`), systemd-supervised over a loopback websocket (`machine0.codexAppServer.port`, default `41455`). Needs `pkgs.codex` (so a `loaded`-derived profile) and a VM created with a machine0 profile that has a connected `codex` integration (`machine0 new <vm> --profile <p>`) — see `machine0-profile-inject` below. Bound to `127.0.0.1` only; reach it with `ssh -L <port>:localhost:<port>`. |
 
 `machine0-profile-inject` (in `modules/machine0.nix`, always present) is what actually lands a profile's credentials — codex/github/claude-code OAuth, the machine0 MCP API key — onto the VM from the `--profile` flag; without it those credentials never materialize, regardless of which services are enabled.
 
