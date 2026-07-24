@@ -124,6 +124,17 @@ in
     # this service, `--profile` has no effect on NixOS images. Any service
     # that depends on those credentials being present should declare
     # `after`/`requires` on this unit.
+    #
+    # Gated to run once ever (ConditionPathExists on the same
+    # /etc/machine0/profile-injected marker the script itself writes at
+    # the end of a successful run): verified live, re-running it is NOT
+    # safe — it includes `git config --global credential.<url>.helper ''`
+    # followed by `--add ... '!gh auth git-credential'`, and a second run
+    # hits "cannot overwrite multiple values with a single value" because
+    # the first run's `--add` already left two values behind. To force a
+    # refresh after `machine0 profiles deploy`, remove the marker and
+    # restart the unit: `rm /etc/machine0/profile-injected && systemctl
+    # restart machine0-profile-inject`.
     systemd.services.machine0-profile-inject = {
       description = "Decode and run the machine0 profile-injection script embedded in instance user_data";
       wantedBy = [ "multi-user.target" ];
@@ -150,6 +161,7 @@ in
         RemainAfterExit = true;
       };
       unitConfig = {
+        ConditionPathExists = "!/etc/machine0/profile-injected";
         After = [ "machine0-metadata.service" ];
         Requires = [ "machine0-metadata.service" ];
       };
