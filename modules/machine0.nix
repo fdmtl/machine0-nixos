@@ -1,11 +1,16 @@
 # machine0 platform integration — declares the machine0.* options and the
-# three metadata-driven systemd services that turn a generic NixOS boot
+# four metadata-driven systemd services that turn a generic NixOS boot
 # into a machine0 VM:
 #
-#   machine0-metadata     — fetches /run/do-metadata/v1.json from the
-#                           hypervisor link-local endpoint.
-#   machine0-set-hostname — extracts the hostname from user-data.
-#   machine0-ssh-keys     — installs SSH keys before sshd starts.
+#   machine0-metadata       — fetches /run/do-metadata/v1.json from the
+#                             hypervisor link-local endpoint.
+#   machine0-set-hostname   — extracts the hostname from user-data.
+#   machine0-ssh-keys       — installs SSH keys before sshd starts.
+#   machine0-profile-inject — decodes and runs the profile-injection
+#                             script (codex/github/claude-code credentials,
+#                             the machine0 MCP API key, ...) embedded in
+#                             user-data by `machine0 new --profile` /
+#                             `machine0 profiles deploy`.
 {
   config,
   pkgs,
@@ -105,6 +110,46 @@ in
       unitConfig = {
         ConditionPathExists = "!/home/nix/.ssh/authorized_keys";
         Before = optional config.services.openssh.enable "sshd.service";
+        After = [ "machine0-metadata.service" ];
+        Requires = [ "machine0-metadata.service" ];
+      };
+    };
+
+    # `machine0 new --profile <p>` / `machine0 profiles deploy` embed a
+    # base64-encoded shell script in user_data, delimited by
+    # `# machine0-inject-begin` / `# machine0-inject-end` (each line
+    # prefixed with "# " so it reads as a comment if user_data is ever
+    # interpreted as the nix expression it starts as). Decoding and running
+    # it is what actually lands profile credentials on the VM — without
+    # this service, `--profile` has no effect on NixOS images. Any service
+    # that depends on those credentials being present should declare
+    # `after`/`requires` on this unit.
+    systemd.services.machine0-profile-inject = {
+      description = "Decode and run the machine0 profile-injection script embedded in instance user_data";
+      wantedBy = [ "multi-user.target" ];
+      path = [
+        pkgs.jq
+        pkgs.coreutils
+        pkgs.gnused
+        pkgs.bash
+      ];
+      script = ''
+        set -eu
+        UD=$(jq -r '.user_data' ${metadataFile})
+        if echo "$UD" | grep -qx '# machine0-inject-begin'; then
+          echo "$UD" \
+            | sed -n '/^# machine0-inject-begin$/,/^# machine0-inject-end$/p' \
+            | sed '1d;$d;s/^# //' \
+            | tr -d '\n' \
+            | base64 -d \
+            | bash
+        fi
+      '';
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+      };
+      unitConfig = {
         After = [ "machine0-metadata.service" ];
         Requires = [ "machine0-metadata.service" ];
       };
