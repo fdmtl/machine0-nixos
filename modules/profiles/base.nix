@@ -13,6 +13,7 @@
     ../core/users.nix
     ../machine0.nix
     ../motd.nix
+    ../services/codex-app-server.nix
   ];
 
   # Banner shown on SSH login.
