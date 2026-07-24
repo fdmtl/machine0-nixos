@@ -24,7 +24,12 @@
   ...
 }:
 let
-  inherit (lib) mkEnableOption mkOption mkIf types;
+  inherit (lib)
+    mkEnableOption
+    mkOption
+    mkIf
+    types
+    ;
   cfg = config.machine0.codexAppServer;
 in
 {
