@@ -33,6 +33,16 @@ git clone https://github.com/fdmtl/machine0-nixos.git && cd machine0-nixos
 
 The (profile → image) mapping is canonical in [`manifest.json`](manifest.json) and consumed by the build/test scripts.
 
+### Optional services
+
+Toggleable via options on `base` and everything built on it (`loaded`/`openclaw`/`hermes`):
+
+| Option | Description |
+|---|---|
+| `machine0.codexAppServer.enable` | Always-on Codex app-server (`modules/services/codex-app-server.nix`), systemd-supervised over a Unix control socket (`machine0.codexAppServer.socketPath`, default `/run/codex-app-server/app-server.sock`). Needs `pkgs.codex` (so a `loaded`-derived profile) and a VM created with a machine0 profile that has a connected `codex` integration (`machine0 new <vm> --profile <p>`) — see `machine0-profile-inject` below. SSH in and run `codex app-server proxy --sock <socketPath>` to attach a client. |
+
+`machine0-profile-inject` (in `modules/machine0.nix`, always present) is what actually lands a profile's credentials — codex/github/claude-code OAuth, the machine0 MCP API key — onto the VM from the `--profile` flag; without it those credentials never materialize, regardless of which services are enabled.
+
 ### Use as a flake input (private profile)
 
 You don't have to fork this repo to customize it. A separate (possibly private) flake can layer its own module on top of any profile — the exported `lib.mkSystem` / `lib.mkImage` builders come pre-wired with this repo's inputs (nixpkgs, home-manager, agent flakes), so your flake needs only one input:
