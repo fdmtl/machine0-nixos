@@ -24,10 +24,10 @@ let
   # the tarball's sha256.
   machine0-cli = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
     pname = "machine0-cli";
-    version = "1.0.143";
+    version = "1.0.144";
     src = pkgs.fetchurl {
       url = "https://registry.npmjs.org/@machine0/cli/-/cli-${finalAttrs.version}.tgz";
-      hash = "sha256-CN9Av62w7zjD4woBeFqByV10Zn9uG3RmbuB8dThwWZI=";
+      hash = "sha256-mqD3X+GbMYyUX0DPWsoCgtixwWtkj40RSQ9IuZRRjck=";
     };
     nativeBuildInputs = [ pkgs.makeWrapper ];
     dontBuild = true;
