@@ -14,6 +14,37 @@
 }:
 let
   overlays = import ../../lib/overlays.nix { inherit nixpkgsUnstable; };
+
+  # machine0 CLI, packaged from the published npm release. The tarball is a
+  # single bundled cjs (no dependencies, no native modules), so no npm
+  # install is needed — unpack and wrap with node. Profile injection writes
+  # ~/.machine0/auth-token + machine0.env at boot, so this CLI is
+  # authenticated out of the box on profile-carrying VMs.
+  # Bump: update version + hash from `npm view @machine0/cli version` and
+  # the tarball's sha256.
+  machine0-cli = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
+    pname = "machine0-cli";
+    version = "1.0.143";
+    src = pkgs.fetchurl {
+      url = "https://registry.npmjs.org/@machine0/cli/-/cli-${finalAttrs.version}.tgz";
+      hash = "sha256-CN9Av62w7zjD4woBeFqByV10Zn9uG3RmbuB8dThwWZI=";
+    };
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    dontBuild = true;
+    installPhase = ''
+      runHook preInstall
+      mkdir -p $out/lib/machine0-cli $out/bin
+      cp -r . $out/lib/machine0-cli
+      makeWrapper ${pkgs.nodejs_22}/bin/node $out/bin/machine0 \
+        --add-flags "$out/lib/machine0-cli/bin/entry.cjs"
+      runHook postInstall
+    '';
+    meta = {
+      description = "Cloud VMs from the CLI";
+      homepage = "https://machine0.io";
+      mainProgram = "machine0";
+    };
+  });
 in
 {
   nixpkgs.overlays = lib.optionals (nixpkgsUnstable != null) [ overlays.unstableModule ];
@@ -55,6 +86,10 @@ in
     # AI agents (from unstable via the overlay above)
     claude-code
     codex
+
+    # machine0 CLI (npm release, see the derivation above) — authenticated
+    # via profile injection (~/.machine0/auth-token).
+    machine0-cli
   ];
 
   programs.zsh.enable = true;
