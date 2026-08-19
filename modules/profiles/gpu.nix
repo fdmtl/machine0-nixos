@@ -12,7 +12,7 @@
   machine0.motd.text = import ../../lib/mkMotd.nix {
     title = "[ m0 ] NixOS 25.11 · GPU";
     body = [
-      "# NVIDIA dc driver 580.126.09 · CUDA via containers (--gpus all)"
+      "# NVIDIA dc driver 570.172.08 · CUDA via containers (--gpus all)"
       "$ nvidia-smi"
       ""
       "Built with the #gpu profile, fork to customize:"

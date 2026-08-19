@@ -1,11 +1,12 @@
 # NVIDIA datacenter userland for machine0 GPU droplets. One module covers
 # every SKU machine0 sells — H100/H200 (Hopper), RTX 4000/6000 Ada and L40S
-# (Ada): the R580 datacenter driver's release notes list the H-Series,
-# L-Series AND the RTX Ada workstation cards as supported products.
+# (Ada): the R570 datacenter driver's release notes list the H-Series,
+# L-Series AND the RTX Ada workstation cards as supported products
+# (docs.nvidia.com/datacenter/tesla/tesla-release-notes-570-172-08).
 #
-# Driver is pinned to dc_580 (580.126.09, LTSB branch, supported until
-# Aug 2028) instead of following `nvidiaPackages.dc`, so a nixpkgs bump
-# can't silently move every GPU image to a new driver branch.
+# Driver is pinned to dc_570 (570.172.08) instead of following
+# `nvidiaPackages.dc`, so a nixpkgs bump can't silently move every GPU
+# image to a new driver branch.
 #
 # Boot ordering:
 #
@@ -40,7 +41,7 @@
 
   hardware.nvidia = {
     datacenter.enable = true;
-    package = config.boot.kernelPackages.nvidiaPackages.dc_580;
+    package = config.boot.kernelPackages.nvidiaPackages.dc_570;
     nvidiaPersistenced = true;
   };
 
