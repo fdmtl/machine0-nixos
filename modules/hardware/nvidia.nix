@@ -35,9 +35,12 @@
 # That path is out of contract and deliberately not defended against.
 { config, pkgs, ... }:
 {
-  # NVIDIA userland/kernel modules are unfree. Base doesn't set this;
-  # setting it here also keeps runtime `nixos-rebuild` evals working.
+  # NVIDIA userland/kernel modules are unfree, and the datacenter (Tesla)
+  # driver additionally requires explicit license acceptance. Base doesn't
+  # set either; setting them here also keeps runtime `nixos-rebuild` evals
+  # working.
   nixpkgs.config.allowUnfree = true;
+  nixpkgs.config.nvidia.acceptLicense = true;
 
   hardware.nvidia = {
     datacenter.enable = true;
