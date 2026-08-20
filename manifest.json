@@ -4,6 +4,6 @@
     { "profile": "loaded",   "image": "nixos-25-11-loaded" },
     { "profile": "openclaw", "image": "nixos-25-11-openclaw", "testSize": "medium" },
     { "profile": "hermes",   "image": "nixos-25-11-hermes",   "testSize": "medium" },
-    { "profile": "gpu",      "image": "nixos-25-11-gpu",      "skipDraftTest": true }
+    { "profile": "gpu",      "image": "nixos-25-11-nvidia",   "skipDraftTest": true }
   ]
 }

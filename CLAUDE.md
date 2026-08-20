@@ -83,7 +83,7 @@ machine0 get <name> --json
   - loaded → `nixos-25-11-loaded`
   - openclaw → `nixos-25-11-openclaw`
   - hermes → `nixos-25-11-hermes`
-  - gpu → `nixos-25-11-gpu` (GPU droplets only — do not create test VMs on normal sizes)
+  - gpu → `nixos-25-11-nvidia` (GPU droplets only — do not create test VMs on normal sizes)
 
 **User doesn't name a VM** (e.g. "add nginx to the loaded profile"):
 - Create a temporary VM for test provisioning:
