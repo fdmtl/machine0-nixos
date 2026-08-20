@@ -53,7 +53,10 @@ draft_version_for() {
 #   version : draft version (auto-detected per-image)
 #   size    : machine0 VM size (manifest.json `testSize`, falls back to DEFAULT_SIZE)
 TARGETS=()
-while IFS='|' read -r IMAGE PROFILE SIZE; do
+while IFS='|' read -r IMAGE PROFILE SIZE SKIP; do
+  # skipDraftTest: GPU images need GPU droplets — they boot degraded on the
+  # generic small/eu test VMs. Verified manually on real GPU hardware.
+  [[ "$SKIP" == "true" ]] && continue
   [[ -z "$SIZE" ]] && SIZE="$DEFAULT_SIZE"
   VERSION=$(draft_version_for "$IMAGE")
   if [ -z "$VERSION" ]; then
@@ -61,7 +64,14 @@ while IFS='|' read -r IMAGE PROFILE SIZE; do
     exit 1
   fi
   TARGETS+=("test-${PROFILE}-v${VERSION}|${IMAGE}|${PROFILE}|${VERSION}|${SIZE}")
-done < <(jq -r '.profiles[] | "\(.image)|\(.profile)|\(.testSize // "")"' manifest.json)
+done < <(jq -r '.profiles[] | "\(.image)|\(.profile)|\(.testSize // "")|\(.skipDraftTest // "")"' manifest.json)
+
+# All profiles skip-marked → empty array, and "${TARGETS[@]}" under set -u
+# aborts on bash < 4.4. Nothing to test is a clean exit, not a crash.
+if [ "${#TARGETS[@]}" -eq 0 ]; then
+  echo "No testable targets in manifest.json (all skipDraftTest) — nothing to do."
+  exit 0
+fi
 
 # === HELPERS ================================================================
 
