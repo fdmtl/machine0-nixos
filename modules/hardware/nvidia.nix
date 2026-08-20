@@ -64,11 +64,13 @@ in
   # Gate fabricmanager on NVSwitch hardware. /proc/driver/nvidia-nvswitch/
   # devices is populated synchronously at module init iff NVSwitch exists.
   # The unit environment carries no useful PATH, so no external commands
-  # besides full-path modprobe (idempotent — covers ordering drift).
+  # besides full-path modprobe (idempotent — covers ordering drift). Keep
+  # modprobe stderr: a driver-load failure must be visible in the journal,
+  # not indistinguishable from a clean no-NVSwitch skip.
   systemd.services.nvidia-fabricmanager = {
     after = [ "systemd-modules-load.service" ];
     serviceConfig.ExecCondition = pkgs.writeShellScript "nvswitch-present" ''
-      ${pkgs.kmod}/bin/modprobe nvidia 2>/dev/null || exit 1
+      ${pkgs.kmod}/bin/modprobe nvidia || exit 1
       set -- /proc/driver/nvidia-nvswitch/devices/*
       [ -e "$1" ]
     '';
@@ -76,11 +78,18 @@ in
 
   # GPU containers: generates CDI specs at boot and turns on docker's cdi
   # feature (docker >= 25), which is what `--gpus all` resolves through.
+  # nixpkgs wires requiredBy=docker.service but no ordering — add After so
+  # a boot-time `--gpus` container can never race the spec generation.
   hardware.nvidia-container-toolkit.enable = true;
+  systemd.services.docker.after = [ "nvidia-container-toolkit-cdi-generator.service" ];
 
   # Rootful docker — unlike loaded's rootless daemon — because it is the
   # reliable path for `--gpus all`. The nix user drives it sudo-free via
   # group membership (extraGroups lists merge with core/users.nix's wheel).
+  # Boundary note: rootful dockerd programs its own iptables chains, so
+  # `docker run -p` published ports bypass the NixOS firewall (base's
+  # SSH-only posture) and are world-reachable. Deliberate: GPU boxes serve
+  # models; single-tenant VMs, same permissive posture as loaded's 80/443.
   virtualisation.docker.enable = true;
   users.users.nix.extraGroups = [ "docker" ];
 
@@ -93,7 +102,10 @@ in
   #  2. the nvidia runtime as docker's default runtime — the hook itself
   #     refuses non-legacy modes ("use the NVIDIA Container Runtime"), so
   #     device injection must happen in the runtime, which also strips
-  #     the hook from the container spec.
+  #     the hook from the container spec. Side effect (standard on every
+  #     default-runtime=nvidia host, e.g. DGX): images that bake
+  #     ENV NVIDIA_VISIBLE_DEVICES=all (all nvidia/cuda bases) get the GPU
+  #     even without `--gpus`. Fine on single-tenant machine0 VMs.
   #  3. mode = "cdi" so the runtime injects from the generated CDI spec
   #     instead of the legacy nvidia-container-cli stack (deprecated on
   #     NixOS and not on the daemon PATH).
