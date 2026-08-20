@@ -66,6 +66,13 @@ while IFS='|' read -r IMAGE PROFILE SIZE SKIP; do
   TARGETS+=("test-${PROFILE}-v${VERSION}|${IMAGE}|${PROFILE}|${VERSION}|${SIZE}")
 done < <(jq -r '.profiles[] | "\(.image)|\(.profile)|\(.testSize // "")|\(.skipDraftTest // "")"' manifest.json)
 
+# All profiles skip-marked → empty array, and "${TARGETS[@]}" under set -u
+# aborts on bash < 4.4. Nothing to test is a clean exit, not a crash.
+if [ "${#TARGETS[@]}" -eq 0 ]; then
+  echo "No testable targets in manifest.json (all skipDraftTest) — nothing to do."
+  exit 0
+fi
+
 # === HELPERS ================================================================
 
 now_s()      { date +%s; }

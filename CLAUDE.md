@@ -1,6 +1,6 @@
 # machine0-nixos
 
-NixOS images for machine0 VMs. Four profiles: base, loaded, openclaw, hermes.
+NixOS images for machine0 VMs. Five profiles: base, loaded, openclaw, hermes, gpu.
 
 ## Codebase layout
 
@@ -18,8 +18,11 @@ modules/
     loaded.nix                    # base + dev stack (packages, services, home-manager/zsh)
     openclaw.nix                  # loaded + playwright-mcp + openclaw CLI
     hermes.nix                    # loaded + playwright-mcp + hermes CLI + nixosModule
+    gpu.nix                       # base + hardware/nvidia.nix (GPU droplets only)
   core/                           # System-level modules shared by all profiles
     boot.nix networking.nix nix.nix ssh.nix fail2ban.nix system.nix users.nix
+  hardware/
+    nvidia.nix                    # NVIDIA dc driver (pinned), gated fabricmanager, GPU docker (gpu only)
   development/
     packages.nix                  # Build tools, runtimes, AI agents (loaded+)
     services.nix                  # Rootless Docker, npm, nginx, firewall 80/443, sysctl (loaded+)
@@ -36,13 +39,15 @@ modules/
 
 ```
 base → loaded → openclaw
-                 hermes
+       |         hermes
+       └→ gpu
 ```
 
 - **base**: core/* modules, basic CLI packages (vim, git, curl, htop, wget, tmux, jq). Bash shell.
 - **loaded**: base + development/packages.nix + development/services.nix + home/. Zsh shell. Rootless Docker, npm, nginx, firewall 80/443.
 - **openclaw**: loaded + playwright-mcp + openclaw CLI from nix-openclaw flake input.
 - **hermes**: loaded + playwright-mcp + hermes CLI + nixosModule from hermes-agent flake input.
+- **gpu**: base + hardware/nvidia.nix — NVIDIA datacenter driver 570.172.08 (pinned), nvidia-persistenced, fabricmanager gated on NVSwitch presence, rootful Docker with `--gpus all` (CDI). Boots GPU droplets only (gpuOnly on the machine0 platform).
 
 ## Where to make changes
 
@@ -78,6 +83,7 @@ machine0 get <name> --json
   - loaded → `nixos-25-11-loaded`
   - openclaw → `nixos-25-11-openclaw`
   - hermes → `nixos-25-11-hermes`
+  - gpu → `nixos-25-11-gpu` (GPU droplets only — do not create test VMs on normal sizes)
 
 **User doesn't name a VM** (e.g. "add nginx to the loaded profile"):
 - Create a temporary VM for test provisioning:
@@ -95,7 +101,7 @@ machine0 get <name> --json
 machine0 provision <vm> ".#<profile>"
 ```
 
-The flake reference is always `.#<profile>` where profile is one of: `base`, `loaded`, `openclaw`, `hermes`. This syncs the local flake to the VM and runs `nixos-rebuild switch`. Use a 10-minute timeout — builds can be slow.
+The flake reference is always `.#<profile>` where profile is one of: `base`, `loaded`, `openclaw`, `hermes`, `gpu`. This syncs the local flake to the VM and runs `nixos-rebuild switch`. Use a 10-minute timeout — builds can be slow.
 
 ### 4. Verify
 
