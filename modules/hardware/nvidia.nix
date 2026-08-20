@@ -33,7 +33,15 @@
 # This image is gpuOnly on the machine0 platform: on non-GPU hardware the
 # explicit module load fails and the boot comes up degraded-but-SSHable.
 # That path is out of contract and deliberately not defended against.
-{ config, pkgs, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
+let
+  toolkitTools = lib.getOutput "tools" config.hardware.nvidia-container-toolkit.package;
+in
 {
   # NVIDIA userland/kernel modules are unfree, and the datacenter (Tesla)
   # driver additionally requires explicit license acceptance. Base doesn't
@@ -75,4 +83,27 @@
   # group membership (extraGroups lists merge with core/users.nix's wheel).
   virtualisation.docker.enable = true;
   users.users.nix.extraGroups = [ "docker" ];
+
+  # `docker run --gpus all` needs three more pieces on docker 28 +
+  # toolkit 1.18 (each verified on real GPU hardware; CDI alone only
+  # covers `--device nvidia.com/gpu=all`):
+  #  1. nvidia-container-runtime-hook on dockerd's PATH — moby registers
+  #     its "nvidia" GPU device driver only if it finds the hook at
+  #     daemon start (moby daemon/devices_nvidia_linux.go init()).
+  #  2. the nvidia runtime as docker's default runtime — the hook itself
+  #     refuses non-legacy modes ("use the NVIDIA Container Runtime"), so
+  #     device injection must happen in the runtime, which also strips
+  #     the hook from the container spec.
+  #  3. mode = "cdi" so the runtime injects from the generated CDI spec
+  #     instead of the legacy nvidia-container-cli stack (deprecated on
+  #     NixOS and not on the daemon PATH).
+  systemd.services.docker.path = [ toolkitTools ];
+  virtualisation.docker.daemon.settings = {
+    default-runtime = "nvidia";
+    runtimes.nvidia.path = "${toolkitTools}/bin/nvidia-container-runtime";
+  };
+  environment.etc."nvidia-container-runtime/config.toml".text = ''
+    [nvidia-container-runtime]
+    mode = "cdi"
+  '';
 }
