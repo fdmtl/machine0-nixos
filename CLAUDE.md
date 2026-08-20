@@ -38,9 +38,9 @@ modules/
 ## Profile inheritance
 
 ```
-base → loaded → openclaw
-       |         hermes
-       └→ gpu
+base ─┬→ loaded ─┬→ openclaw
+      │          └→ hermes
+      └→ gpu
 ```
 
 - **base**: core/* modules, basic CLI packages (vim, git, curl, htop, wget, tmux, jq). Bash shell.
