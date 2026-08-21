@@ -16,18 +16,30 @@ let
   overlays = import ../../lib/overlays.nix { inherit nixpkgsUnstable; };
 
   # machine0 CLI, packaged from the published npm release. The tarball is a
-  # single bundled cjs (no dependencies, no native modules), so no npm
-  # install is needed — unpack and wrap with node. Profile injection writes
+  # self-contained bundle (no runtime dependencies, no native modules), so no
+  # npm install is needed — unpack and wrap with node. Profile injection writes
   # ~/.machine0/auth-token + machine0.env at boot, so this CLI is
   # authenticated out of the box on profile-carrying VMs.
+  #
   # Bump: update version + hash from `npm view @machine0/cli version` and
-  # the tarball's sha256.
+  # `nix-prefetch-url --type sha256 <tarball>`.
+  #
+  # BEFORE BUMPING, CHECK: `npm view @machine0/cli@<version> dependencies`
+  # MUST be empty. This unpack-and-wrap has no node_modules, so a CLI release
+  # that declares runtime dependencies produces a package that builds fine and
+  # then dies at *runtime* with ERR_MODULE_NOT_FOUND on every VM built from
+  # this image. That is not hypothetical: 1.0.147–1.0.163 externalised `open`
+  # and `update-notifier` out of the bundle (fdmtl/machine0#626) and 1.0.163
+  # shipped here in #31 broken for exactly that reason. fdmtl/machine0#733
+  # re-bundled them, and machine0's own CLI Package CI now packs the tarball
+  # and installs it on a clean runner, so a regression is caught upstream —
+  # but this derivation is the thing that breaks, so check it here too.
   machine0-cli = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
     pname = "machine0-cli";
-    version = "1.0.163";
+    version = "1.0.164";
     src = pkgs.fetchurl {
       url = "https://registry.npmjs.org/@machine0/cli/-/cli-${finalAttrs.version}.tgz";
-      hash = "sha256-AInMzjielQ7c754hl1K/M2PJqeaePDchXSw4Y8Ml0bs=";
+      hash = "sha256-7BLWBUZcV7l4KTwf0RvIn2+z7P1w5Q4KWAwsiA1jHdw=";
     };
     nativeBuildInputs = [ pkgs.makeWrapper ];
     dontBuild = true;
